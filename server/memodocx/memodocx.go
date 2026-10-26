@@ -42,6 +42,7 @@ func NewService(st *store.Store, dataDir, secret string) *Service {
 // RegisterRoutes registers the export routes.
 func (s *Service) RegisterRoutes(mux *http.ServeMux, fallback http.Handler) {
 	mux.Handle("/file/memos/{uid}/docx", httphandler.GET(httphandler.Func(s.serveMemo), fallback))
+	mux.Handle("/file/memos/{uid}/md", httphandler.GET(httphandler.Func(s.serveMemoMarkdown), fallback))
 	mux.Handle("/file/users/me/memos.docx", httphandler.GET(httphandler.Func(s.serveAll), fallback))
 }
 

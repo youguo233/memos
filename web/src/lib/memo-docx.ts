@@ -40,3 +40,9 @@ export async function exportAllMemosDocx(startDate?: string, endDate?: string): 
   }
   await downloadDocx("/file/users/me/memos.docx", params, "memos.docx");
 }
+
+// exportMemoMarkdown downloads one memo as a raw Markdown file.
+export async function exportMemoMarkdown(memoName: string): Promise<void> {
+  const uid = extractMemoIdFromName(memoName);
+  await downloadDocx(`/file/memos/${encodeURIComponent(uid)}/md`, {}, `memo-${uid}.md`);
+}

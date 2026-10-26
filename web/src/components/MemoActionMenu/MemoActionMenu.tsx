@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/error";
-import { exportMemoDocx } from "@/lib/memo-docx";
+import { exportMemoDocx, exportMemoMarkdown } from "@/lib/memo-docx";
 import { State } from "@/types/proto/api/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { createMemoNavigationState } from "../MemoView/navigation";
@@ -117,11 +117,25 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     }
   };
 
+  const handleExportMarkdown = async () => {
+    try {
+      await exportMemoMarkdown(memo.name);
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+    }
+  };
+
   const exportDocxItem = (
-    <DropdownMenuItem onClick={handleExportDocx}>
-      <FileDownIcon />
-      {t("memo.export-docx")}
-    </DropdownMenuItem>
+    <>
+      <DropdownMenuItem onClick={handleExportDocx}>
+        <FileDownIcon />
+        {t("memo.export-docx")}
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleExportMarkdown}>
+        <FileDownIcon />
+        {t("memo.export-markdown")}
+      </DropdownMenuItem>
+    </>
   );
 
   const deleteItem = (

@@ -390,6 +390,7 @@
     "parent-unavailable-description": "它可能已被删除，或者您可能已失去访问权限。",
     "moved": "备忘录已移动",
     "export-docx": "导出为 Word (.docx)",
+    "export-markdown": "导出为 Markdown (.md)",
     "export-docx-failed": "导出备忘录失败。"
   },
   "message": {

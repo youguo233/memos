@@ -461,6 +461,7 @@
       "space-description": "Everyone in {{space}}"
     },
     "export-docx": "Export as Word (.docx)",
+    "export-markdown": "Export as Markdown (.md)",
     "export-docx-failed": "Failed to export the memo."
   },
   "message": {
