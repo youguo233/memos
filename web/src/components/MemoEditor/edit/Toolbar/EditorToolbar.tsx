@@ -140,15 +140,16 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
             <TooltipTrigger
               render={
                 <Button
-                  variant="outline"
-                  size="icon-compact"
+                  variant="quiet"
+                  size="sm"
+                  className="size-7 shrink-0 px-0 text-muted-foreground hover:text-foreground"
                   onClick={viewToggles.onToggleFocusMode}
                   aria-label={focusLabel}
                   aria-pressed={isFocusMode}
                 />
               }
             >
-              {isFocusMode ? <Minimize2Icon /> : <Maximize2Icon />}
+              {isFocusMode ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
             </TooltipTrigger>
             <TooltipContent side="top">{focusLabel}</TooltipContent>
           </Tooltip>
