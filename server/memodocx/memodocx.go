@@ -12,10 +12,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/usememos/memos/core/access"
@@ -28,12 +30,13 @@ import (
 // Service renders memos to .docx over plain HTTP.
 type Service struct {
 	Store         *store.Store
+	DataDir       string // instance data dir, for local attachment storage
 	authenticator *auth.Authenticator
 }
 
 // NewService creates the DOCX export service.
-func NewService(st *store.Store, secret string) *Service {
-	return &Service{Store: st, authenticator: auth.NewAuthenticator(st, secret)}
+func NewService(st *store.Store, dataDir, secret string) *Service {
+	return &Service{Store: st, DataDir: dataDir, authenticator: auth.NewAuthenticator(st, secret)}
 }
 
 // RegisterRoutes registers the export routes.
@@ -59,9 +62,7 @@ func (s *Service) serveMemo(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkRead(ctx, r, memo); err != nil {
 		return err
 	}
-	loc := location(r)
-	doc := &docx.Document{Sections: []docx.Section{section(memo, loc)}}
-	return write(w, doc, "memo-"+uid+".docx")
+	return s.render(ctx, w, "", []*store.Memo{memo}, location(r), "memo-"+uid+".docx")
 }
 
 func (s *Service) serveAll(w http.ResponseWriter, r *http.Request) error {
@@ -91,18 +92,53 @@ func (s *Service) serveAll(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = user.Username
 	}
-	doc := &docx.Document{Title: "Memos · " + name}
+	var selected []*store.Memo
 	for _, memo := range memos {
 		if (start != nil && memo.CreatedTs < *start) || (end != nil && memo.CreatedTs >= *end) {
 			continue
 		}
+		selected = append(selected, memo)
+	}
+	return s.render(ctx, w, "Memos · "+name, selected, loc, fmt.Sprintf("memos-%s-%s.docx", user.Username, time.Now().In(loc).Format("20060102-150405")))
+}
+
+// render converts memos with pandoc when available, otherwise with the
+// built-in pure-Go generator.
+func (s *Service) render(ctx context.Context, w http.ResponseWriter, title string, memos []*store.Memo, loc *time.Location, filename string) error {
+	if bin := pandocPath(); bin != "" {
+		entries := make([]entry, 0, len(memos))
+		for _, memo := range memos {
+			sec := section(memo, loc)
+			entries = append(entries, entry{Title: sec.Title, Subtitle: sec.Subtitle, Markdown: s.memoImages(ctx, memo)})
+		}
+		md := buildMarkdown(entries)
+		if len(entries) == 0 {
+			md = "_No memos in the selected range._\n"
+		}
+		out, err := pandocConvert(ctx, bin, md, title)
+		if err == nil {
+			return writeBytes(w, out, filename)
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		slog.Warn("docx export: pandoc conversion failed, falling back to built-in generator", "error", err)
+	} else {
+		pandocMissingOnce.Do(func() {
+			slog.Warn("docx export: pandoc not found in PATH (or MEMOS_PANDOC_PATH); using built-in generator with limited Markdown support")
+		})
+	}
+	doc := &docx.Document{Title: title}
+	for _, memo := range memos {
 		doc.Sections = append(doc.Sections, section(memo, loc))
 	}
 	if len(doc.Sections) == 0 {
 		doc.Sections = []docx.Section{{Markdown: "_No memos in the selected range._"}}
 	}
-	return write(w, doc, fmt.Sprintf("memos-%s-%s.docx", user.Username, time.Now().In(loc).Format("20060102-150405")))
+	return write(w, doc, filename)
 }
+
+var pandocMissingOnce sync.Once
 
 func section(memo *store.Memo, loc *time.Location) docx.Section {
 	var sub []string
@@ -125,13 +161,17 @@ func write(w http.ResponseWriter, doc *docx.Document, filename string) error {
 	if err := doc.Write(&buf); err != nil {
 		return &httphandler.Error{Code: http.StatusInternalServerError, Message: "failed to render docx", Cause: err}
 	}
+	return writeBytes(w, buf.Bytes(), filename)
+}
+
+func writeBytes(w http.ResponseWriter, data []byte, filename string) error {
 	w.Header().Set("Content-Type", docx.MediaType)
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(filename))
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write(buf.Bytes())
+	_, err := w.Write(data)
 	return err
 }
 

@@ -26,6 +26,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -o memos \
       ./cmd/memos
 
+# Pandoc (official static Linux binary) for DOCX export. Available for amd64
+# and arm64; on other architectures the stage leaves an empty directory and
+# Memos falls back to its built-in pure-Go DOCX generator.
+FROM alpine:3.21 AS pandoc
+ARG TARGETARCH PANDOC_VERSION=3.6.4
+RUN mkdir -p /out && \
+    case "$TARGETARCH" in amd64|arm64) \
+      wget -qO- "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-linux-${TARGETARCH}.tar.gz" \
+        | tar -xz -C /tmp && mv /tmp/pandoc-${PANDOC_VERSION}/bin/pandoc /out/pandoc && /out/pandoc --version ;; \
+      *) echo "pandoc: no static build for $TARGETARCH, skipping" ;; \
+    esac
+
 # Use minimal Alpine with security updates
 FROM alpine:3.21 AS monolithic
 
@@ -38,6 +50,7 @@ RUN apk add --no-cache tzdata ca-certificates su-exec && \
 
 # Copy binary and entrypoint to /usr/local/memos
 COPY --from=backend /backend-build/memos /usr/local/memos/memos
+COPY --from=pandoc /out/ /usr/local/bin/
 COPY --from=backend --chmod=755 /backend-build/scripts/entrypoint.sh /usr/local/memos/entrypoint.sh
 
 # Run as root to fix permissions, entrypoint will drop to nonroot
