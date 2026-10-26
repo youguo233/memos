@@ -1,4 +1,4 @@
-import { CheckIcon, CornerDownLeftIcon, LoaderIcon } from "lucide-react";
+import { CheckIcon, CornerDownLeftIcon, LoaderIcon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -48,6 +48,8 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
   const isUploading = useEditorSelector((s) => s.ui.isLoading.uploading);
   const location = useEditorSelector((s) => s.metadata.location);
   const visibility = useEditorSelector((s) => s.metadata.visibility);
+  const isFocusMode = useEditorSelector((s) => s.ui.isFocusMode);
+  const focusLabel = isFocusMode ? t("editor.exit-focus-mode") : t("editor.focus-mode");
   // The save transaction is in flight or its confirmation is holding the
   // editor open; either way the toolbar is frozen.
   const committing = isSaving || justSaved;
@@ -132,6 +134,25 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
           onSpaceChange={canChooseSpace ? handleSpaceChange : undefined}
           disabled={committing}
         />
+        {/* Shortcut for the insert menu's focus-mode item; hidden when a host owns the presentation. */}
+        {viewToggles && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon-compact"
+                  onClick={viewToggles.onToggleFocusMode}
+                  aria-label={focusLabel}
+                  aria-pressed={isFocusMode}
+                />
+              }
+            >
+              {isFocusMode ? <Minimize2Icon /> : <Maximize2Icon />}
+            </TooltipTrigger>
+            <TooltipContent side="top">{focusLabel}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-row items-center justify-end gap-1">
