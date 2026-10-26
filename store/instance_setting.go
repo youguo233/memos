@@ -48,6 +48,8 @@ func (s *Store) UpsertInstanceSetting(ctx context.Context, upsert *storepb.Insta
 		valueBytes, err = protojson.Marshal(upsert.GetNotificationSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_AI {
 		valueBytes, err = protojson.Marshal(upsert.GetAiSetting())
+	} else if upsert.Key == storepb.InstanceSettingKey_CAPTCHA {
+		valueBytes, err = protojson.Marshal(upsert.GetCaptchaSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_ACCESS {
 		valueBytes, err = protojson.Marshal(upsert.GetAccessSetting())
 	} else if upsert.Key == storepb.InstanceSettingKey_USAGE_LIMITS {
@@ -459,6 +461,12 @@ func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storep
 			return nil, err
 		}
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{AiSetting: aiSetting}
+	case storepb.InstanceSettingKey_CAPTCHA.String():
+		captchaSetting := &storepb.InstanceCaptchaSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(instanceSettingRaw.Value), captchaSetting); err != nil {
+			return nil, err
+		}
+		instanceSetting.Value = &storepb.InstanceSetting_CaptchaSetting{CaptchaSetting: captchaSetting}
 	case storepb.InstanceSettingKey_ACCESS.String():
 		accessSetting := &storepb.InstanceAccessSetting{}
 		if err := protojsonUnmarshaler.Unmarshal([]byte(instanceSettingRaw.Value), accessSetting); err != nil {
@@ -476,4 +484,23 @@ func convertInstanceSettingFromRaw(instanceSettingRaw *InstanceSetting) (*storep
 		return nil, nil
 	}
 	return instanceSetting, nil
+}
+
+// GetInstanceCaptchaSetting gets the Turnstile captcha setting.
+func (s *Store) GetInstanceCaptchaSetting(ctx context.Context) (*storepb.InstanceCaptchaSetting, error) {
+	instanceSetting, err := s.GetInstanceSetting(ctx, &FindInstanceSetting{
+		Name: storepb.InstanceSettingKey_CAPTCHA.String(),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get instance captcha setting")
+	}
+	setting := &storepb.InstanceCaptchaSetting{}
+	if instanceSetting != nil && instanceSetting.GetCaptchaSetting() != nil {
+		setting = instanceSetting.GetCaptchaSetting()
+	}
+	s.cacheInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key:   storepb.InstanceSettingKey_CAPTCHA,
+		Value: &storepb.InstanceSetting_CaptchaSetting{CaptchaSetting: setting},
+	})
+	return setting, nil
 }

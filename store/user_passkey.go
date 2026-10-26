@@ -116,4 +116,3 @@ func (s *Store) DeleteUserPasskey(ctx context.Context, userID, id int32) (bool, 
 	n, err := res.RowsAffected()
 	return n > 0, err
 }
-

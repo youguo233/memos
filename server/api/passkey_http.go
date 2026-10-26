@@ -38,9 +38,11 @@ type passkeyUser struct {
 	creds []webauthn.Credential
 }
 
-func (u *passkeyUser) WebAuthnID() []byte          { return []byte(strconv.Itoa(int(u.user.ID))) }
-func (u *passkeyUser) WebAuthnName() string        { return u.user.Username }
-func (u *passkeyUser) WebAuthnDisplayName() string { return firstNonEmpty(u.user.Nickname, u.user.Username) }
+func (u *passkeyUser) WebAuthnID() []byte   { return []byte(strconv.Itoa(int(u.user.ID))) }
+func (u *passkeyUser) WebAuthnName() string { return u.user.Username }
+func (u *passkeyUser) WebAuthnDisplayName() string {
+	return firstNonEmpty(u.user.Nickname, u.user.Username)
+}
 func (u *passkeyUser) WebAuthnCredentials() []webauthn.Credential {
 	return u.creds
 }

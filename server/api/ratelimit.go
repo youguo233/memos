@@ -233,7 +233,8 @@ func (s *APIService) chargeBatch(ctx context.Context, items int) {
 // requireChallenge verifies the challenge token on the request when a
 // challenge is configured. With no challenge configured it is a no-op.
 func (s *APIService) requireChallenge(ctx context.Context, scope ratelimit.Scope) error {
-	if s.Challenge == nil {
+	challenge := s.activeChallenge(ctx)
+	if challenge == nil {
 		return nil
 	}
 	token := ""
@@ -245,7 +246,7 @@ func (s *APIService) requireChallenge(ctx context.Context, scope ratelimit.Scope
 	if token == "" {
 		return newChallengeRequiredError("challenge token is required")
 	}
-	if err := s.Challenge.Verify(ctx, scope, token, clientip.FromContext(ctx)); err != nil {
+	if err := challenge.Verify(ctx, scope, token, challengeRemoteIP(ctx)); err != nil {
 		slog.Info("challenge verification failed", slog.String("scope", string(scope)), slog.String("error", err.Error()))
 		return newChallengeRequiredError("challenge verification failed")
 	}

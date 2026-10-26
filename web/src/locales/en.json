@@ -1084,6 +1084,16 @@
       "delete-confirm": "Delete passkey \"{{name}}\"?",
       "created": "Created",
       "last-used": "Last used"
+    },
+    "captcha": {
+      "title": "Captcha (Cloudflare Turnstile)",
+      "description": "Require a Turnstile check on password sign-in and sign-up. Passkey sign-in is not affected.",
+      "enable": "Enable Turnstile",
+      "site-key": "Site key",
+      "secret-key": "Secret key",
+      "secret-set": "Stored",
+      "secret-keep": "Leave empty to keep the stored secret",
+      "keys-required": "Site key and secret key are required to enable Turnstile."
     }
   },
   "space": {

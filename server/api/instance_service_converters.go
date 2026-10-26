@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	apipb "github.com/usememos/memos/proto/gen/api"
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -35,6 +36,16 @@ func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *apipb.In
 	case *storepb.InstanceSetting_AiSetting:
 		instanceSetting.Value = &apipb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingFromStore(setting.GetAiSetting()),
+		}
+	case *storepb.InstanceSetting_CaptchaSetting:
+		c := setting.GetCaptchaSetting()
+		instanceSetting.Value = &apipb.InstanceSetting_CaptchaSetting_{
+			CaptchaSetting: &apipb.InstanceSetting_CaptchaSetting{
+				Enabled:       c.GetEnabled(),
+				SiteKey:       c.GetSiteKey(),
+				SecretKeySet:  c.GetSecretKey() != "",
+				SecretKeyHint: maskAPIKey(c.GetSecretKey()),
+			},
 		}
 	case *storepb.InstanceSetting_AccessSetting:
 		instanceSetting.Value = &apipb.InstanceSetting_AccessSetting_{
@@ -78,6 +89,15 @@ func convertInstanceSettingToStore(setting *apipb.InstanceSetting) *storepb.Inst
 	case storepb.InstanceSettingKey_AI:
 		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{
 			AiSetting: convertInstanceAISettingToStore(setting.GetAiSetting()),
+		}
+	case storepb.InstanceSettingKey_CAPTCHA:
+		c := setting.GetCaptchaSetting()
+		instanceSetting.Value = &storepb.InstanceSetting_CaptchaSetting{
+			CaptchaSetting: &storepb.InstanceCaptchaSetting{
+				Enabled:   c.GetEnabled(),
+				SiteKey:   strings.TrimSpace(c.GetSiteKey()),
+				SecretKey: strings.TrimSpace(c.GetSecretKey()),
+			},
 		}
 	case storepb.InstanceSettingKey_ACCESS:
 		instanceSetting.Value = &storepb.InstanceSetting_AccessSetting{

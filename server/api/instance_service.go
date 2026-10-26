@@ -74,7 +74,7 @@ func (s *APIService) GetInstanceProfile(ctx context.Context, _ *apipb.GetInstanc
 		Commit:      s.Profile.Commit,
 		NeedsSetup:  len(users) == 0,
 		AccessMode:  convertInstanceAccessModeFromStore(accessSetting.AccessMode),
-		Challenge:   s.challengeProfile(),
+		Challenge:   s.challengeProfile(ctx),
 	}
 	return instanceProfile, nil
 }
@@ -144,6 +144,10 @@ func (s *APIService) getInstanceSettingByName(ctx context.Context, name string, 
 		var setting *storepb.InstanceAccessSetting
 		setting, err = s.Store.GetInstanceAccessSetting(ctx)
 		instanceSetting = &storepb.InstanceSetting{Key: instanceSettingKey, Value: &storepb.InstanceSetting_AccessSetting{AccessSetting: setting}}
+	case storepb.InstanceSettingKey_CAPTCHA:
+		var setting *storepb.InstanceCaptchaSetting
+		setting, err = s.Store.GetInstanceCaptchaSetting(ctx)
+		instanceSetting = &storepb.InstanceSetting{Key: instanceSettingKey, Value: &storepb.InstanceSetting_CaptchaSetting{CaptchaSetting: setting}}
 	case storepb.InstanceSettingKey_USAGE_LIMITS:
 		var setting *storepb.InstanceUsageLimitsSetting
 		setting, err = s.Store.GetInstanceUsageLimitsSetting(ctx)
@@ -159,6 +163,7 @@ func (s *APIService) getInstanceSettingByName(ctx context.Context, name string, 
 	// name users; restrict them to admins.
 	if instanceSetting.Key == storepb.InstanceSettingKey_STORAGE ||
 		instanceSetting.Key == storepb.InstanceSettingKey_NOTIFICATION ||
+		instanceSetting.Key == storepb.InstanceSettingKey_CAPTCHA ||
 		instanceSetting.Key == storepb.InstanceSettingKey_USAGE_LIMITS {
 		user, err := caller.currentUser(ctx, s)
 		if err != nil {
@@ -267,6 +272,12 @@ func (s *APIService) UpdateInstanceSetting(ctx context.Context, request *apipb.U
 		if err := store.PrepareInstanceStorageSettingUpdate(updateSetting.GetStorageSetting(), existing); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid storage setting: %v", err)
 		}
+	case storepb.InstanceSettingKey_CAPTCHA:
+		if c := updateSetting.GetCaptchaSetting(); c != nil && c.SecretKey == "" {
+			if existing, err := s.Store.GetInstanceCaptchaSetting(ctx); err == nil && existing != nil {
+				c.SecretKey = existing.SecretKey
+			}
+		}
 	case storepb.InstanceSettingKey_AI:
 		if err := s.prepareInstanceAISettingForUpdate(ctx, updateSetting.GetAiSetting()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid AI setting: %v", err)
@@ -296,13 +307,14 @@ func (s *APIService) UpdateInstanceSetting(ctx context.Context, request *apipb.U
 
 // challengeProfile describes the configured challenge so the web app can
 // render the matching widget, or nil when none is configured.
-func (s *APIService) challengeProfile() *apipb.InstanceProfile_Challenge {
-	if s.Challenge == nil {
+func (s *APIService) challengeProfile(ctx context.Context) *apipb.InstanceProfile_Challenge {
+	challenge := s.activeChallenge(ctx)
+	if challenge == nil {
 		return nil
 	}
 	return &apipb.InstanceProfile_Challenge{
-		Provider: s.Challenge.Provider(),
-		SiteKey:  s.Challenge.SiteKey(),
+		Provider: challenge.Provider(),
+		SiteKey:  challenge.SiteKey(),
 	}
 }
 

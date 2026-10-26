@@ -45,21 +45,24 @@ const (
 	// USAGE_LIMITS is the key for the ordered usage limits list, read and
 	// replaced whole through the instance settings API.
 	InstanceSettingKey_USAGE_LIMITS InstanceSettingKey = 9
+	// CAPTCHA is the Cloudflare Turnstile setting for password sign-in and signup.
+	InstanceSettingKey_CAPTCHA InstanceSettingKey = 10
 )
 
 // Enum value maps for InstanceSettingKey.
 var (
 	InstanceSettingKey_name = map[int32]string{
-		0: "INSTANCE_SETTING_KEY_UNSPECIFIED",
-		1: "BASIC",
-		2: "GENERAL",
-		3: "STORAGE",
-		4: "MEMO_RELATED",
-		5: "TAGS",
-		6: "NOTIFICATION",
-		7: "AI",
-		8: "ACCESS",
-		9: "USAGE_LIMITS",
+		0:  "INSTANCE_SETTING_KEY_UNSPECIFIED",
+		1:  "BASIC",
+		2:  "GENERAL",
+		3:  "STORAGE",
+		4:  "MEMO_RELATED",
+		5:  "TAGS",
+		6:  "NOTIFICATION",
+		7:  "AI",
+		8:  "ACCESS",
+		9:  "USAGE_LIMITS",
+		10: "CAPTCHA",
 	}
 	InstanceSettingKey_value = map[string]int32{
 		"INSTANCE_SETTING_KEY_UNSPECIFIED": 0,
@@ -72,6 +75,7 @@ var (
 		"AI":                               7,
 		"ACCESS":                           8,
 		"USAGE_LIMITS":                     9,
+		"CAPTCHA":                          10,
 	}
 )
 
@@ -325,6 +329,7 @@ type InstanceSetting struct {
 	//	*InstanceSetting_AiSetting
 	//	*InstanceSetting_AccessSetting
 	//	*InstanceSetting_UsageLimitsSetting
+	//	*InstanceSetting_CaptchaSetting
 	Value         isInstanceSetting_Value `protobuf_oneof:"value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -455,6 +460,15 @@ func (x *InstanceSetting) GetUsageLimitsSetting() *InstanceUsageLimitsSetting {
 	return nil
 }
 
+func (x *InstanceSetting) GetCaptchaSetting() *InstanceCaptchaSetting {
+	if x != nil {
+		if x, ok := x.Value.(*InstanceSetting_CaptchaSetting); ok {
+			return x.CaptchaSetting
+		}
+	}
+	return nil
+}
+
 type isInstanceSetting_Value interface {
 	isInstanceSetting_Value()
 }
@@ -495,6 +509,10 @@ type InstanceSetting_UsageLimitsSetting struct {
 	UsageLimitsSetting *InstanceUsageLimitsSetting `protobuf:"bytes,10,opt,name=usage_limits_setting,json=usageLimitsSetting,proto3,oneof"`
 }
 
+type InstanceSetting_CaptchaSetting struct {
+	CaptchaSetting *InstanceCaptchaSetting `protobuf:"bytes,11,opt,name=captcha_setting,json=captchaSetting,proto3,oneof"`
+}
+
 func (*InstanceSetting_BasicSetting) isInstanceSetting_Value() {}
 
 func (*InstanceSetting_GeneralSetting) isInstanceSetting_Value() {}
@@ -512,6 +530,8 @@ func (*InstanceSetting_AiSetting) isInstanceSetting_Value() {}
 func (*InstanceSetting_AccessSetting) isInstanceSetting_Value() {}
 
 func (*InstanceSetting_UsageLimitsSetting) isInstanceSetting_Value() {}
+
+func (*InstanceSetting_CaptchaSetting) isInstanceSetting_Value() {}
 
 type InstanceBasicSetting struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1432,6 +1452,67 @@ func (x *TranscriptionConfig) GetPrompt() string {
 	return ""
 }
 
+// InstanceCaptchaSetting configures Cloudflare Turnstile.
+type InstanceCaptchaSetting struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	SiteKey       string                 `protobuf:"bytes,2,opt,name=site_key,json=siteKey,proto3" json:"site_key,omitempty"`
+	SecretKey     string                 `protobuf:"bytes,3,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstanceCaptchaSetting) Reset() {
+	*x = InstanceCaptchaSetting{}
+	mi := &file_store_instance_setting_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstanceCaptchaSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstanceCaptchaSetting) ProtoMessage() {}
+
+func (x *InstanceCaptchaSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_store_instance_setting_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstanceCaptchaSetting.ProtoReflect.Descriptor instead.
+func (*InstanceCaptchaSetting) Descriptor() ([]byte, []int) {
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *InstanceCaptchaSetting) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *InstanceCaptchaSetting) GetSiteKey() string {
+	if x != nil {
+		return x.SiteKey
+	}
+	return ""
+}
+
+func (x *InstanceCaptchaSetting) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
 type InstanceAccessSetting struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessMode    InstanceAccessMode     `protobuf:"varint,1,opt,name=access_mode,json=accessMode,proto3,enum=memos.store.InstanceAccessMode" json:"access_mode,omitempty"`
@@ -1441,7 +1522,7 @@ type InstanceAccessSetting struct {
 
 func (x *InstanceAccessSetting) Reset() {
 	*x = InstanceAccessSetting{}
-	mi := &file_store_instance_setting_proto_msgTypes[14]
+	mi := &file_store_instance_setting_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1453,7 +1534,7 @@ func (x *InstanceAccessSetting) String() string {
 func (*InstanceAccessSetting) ProtoMessage() {}
 
 func (x *InstanceAccessSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_store_instance_setting_proto_msgTypes[14]
+	mi := &file_store_instance_setting_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1466,7 +1547,7 @@ func (x *InstanceAccessSetting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstanceAccessSetting.ProtoReflect.Descriptor instead.
 func (*InstanceAccessSetting) Descriptor() ([]byte, []int) {
-	return file_store_instance_setting_proto_rawDescGZIP(), []int{14}
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *InstanceAccessSetting) GetAccessMode() InstanceAccessMode {
@@ -1488,7 +1569,7 @@ type InstanceUsageLimitsSetting struct {
 
 func (x *InstanceUsageLimitsSetting) Reset() {
 	*x = InstanceUsageLimitsSetting{}
-	mi := &file_store_instance_setting_proto_msgTypes[15]
+	mi := &file_store_instance_setting_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1500,7 +1581,7 @@ func (x *InstanceUsageLimitsSetting) String() string {
 func (*InstanceUsageLimitsSetting) ProtoMessage() {}
 
 func (x *InstanceUsageLimitsSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_store_instance_setting_proto_msgTypes[15]
+	mi := &file_store_instance_setting_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1513,7 +1594,7 @@ func (x *InstanceUsageLimitsSetting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstanceUsageLimitsSetting.ProtoReflect.Descriptor instead.
 func (*InstanceUsageLimitsSetting) Descriptor() ([]byte, []int) {
-	return file_store_instance_setting_proto_rawDescGZIP(), []int{15}
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *InstanceUsageLimitsSetting) GetLimits() []*InstanceUsageLimitsSetting_UsageLimit {
@@ -1541,7 +1622,7 @@ type InstanceNotificationSetting_EmailSetting struct {
 
 func (x *InstanceNotificationSetting_EmailSetting) Reset() {
 	*x = InstanceNotificationSetting_EmailSetting{}
-	mi := &file_store_instance_setting_proto_msgTypes[17]
+	mi := &file_store_instance_setting_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1553,7 +1634,7 @@ func (x *InstanceNotificationSetting_EmailSetting) String() string {
 func (*InstanceNotificationSetting_EmailSetting) ProtoMessage() {}
 
 func (x *InstanceNotificationSetting_EmailSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_store_instance_setting_proto_msgTypes[17]
+	mi := &file_store_instance_setting_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1662,7 +1743,7 @@ type InstanceUsageLimitsSetting_UsageLimit struct {
 
 func (x *InstanceUsageLimitsSetting_UsageLimit) Reset() {
 	*x = InstanceUsageLimitsSetting_UsageLimit{}
-	mi := &file_store_instance_setting_proto_msgTypes[18]
+	mi := &file_store_instance_setting_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1755,7 @@ func (x *InstanceUsageLimitsSetting_UsageLimit) String() string {
 func (*InstanceUsageLimitsSetting_UsageLimit) ProtoMessage() {}
 
 func (x *InstanceUsageLimitsSetting_UsageLimit) ProtoReflect() protoreflect.Message {
-	mi := &file_store_instance_setting_proto_msgTypes[18]
+	mi := &file_store_instance_setting_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1768,7 @@ func (x *InstanceUsageLimitsSetting_UsageLimit) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use InstanceUsageLimitsSetting_UsageLimit.ProtoReflect.Descriptor instead.
 func (*InstanceUsageLimitsSetting_UsageLimit) Descriptor() ([]byte, []int) {
-	return file_store_instance_setting_proto_rawDescGZIP(), []int{15, 0}
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{16, 0}
 }
 
 func (x *InstanceUsageLimitsSetting_UsageLimit) GetUserIds() []int32 {
@@ -1736,7 +1817,7 @@ var File_store_instance_setting_proto protoreflect.FileDescriptor
 
 const file_store_instance_setting_proto_rawDesc = "" +
 	"\n" +
-	"\x1cstore/instance_setting.proto\x12\vmemos.store\x1a\x17google/type/color.proto\"\xa5\x06\n" +
+	"\x1cstore/instance_setting.proto\x12\vmemos.store\x1a\x17google/type/color.proto\"\xf5\x06\n" +
 	"\x0fInstanceSetting\x121\n" +
 	"\x03key\x18\x01 \x01(\x0e2\x1f.memos.store.InstanceSettingKeyR\x03key\x12H\n" +
 	"\rbasic_setting\x18\x02 \x01(\v2!.memos.store.InstanceBasicSettingH\x00R\fbasicSetting\x12N\n" +
@@ -1749,7 +1830,8 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"ai_setting\x18\b \x01(\v2\x1e.memos.store.InstanceAISettingH\x00R\taiSetting\x12K\n" +
 	"\x0eaccess_setting\x18\t \x01(\v2\".memos.store.InstanceAccessSettingH\x00R\raccessSetting\x12[\n" +
 	"\x14usage_limits_setting\x18\n" +
-	" \x01(\v2'.memos.store.InstanceUsageLimitsSettingH\x00R\x12usageLimitsSettingB\a\n" +
+	" \x01(\v2'.memos.store.InstanceUsageLimitsSettingH\x00R\x12usageLimitsSetting\x12N\n" +
+	"\x0fcaptcha_setting\x18\v \x01(\v2#.memos.store.InstanceCaptchaSettingH\x00R\x0ecaptchaSettingB\a\n" +
 	"\x05value\"\x85\x01\n" +
 	"\x14InstanceBasicSetting\x12\x1d\n" +
 	"\n" +
@@ -1833,7 +1915,12 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"providerId\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12\x1a\n" +
 	"\blanguage\x18\x03 \x01(\tR\blanguage\x12\x16\n" +
-	"\x06prompt\x18\x04 \x01(\tR\x06prompt\"Y\n" +
+	"\x06prompt\x18\x04 \x01(\tR\x06prompt\"l\n" +
+	"\x16InstanceCaptchaSetting\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
+	"\bsite_key\x18\x02 \x01(\tR\asiteKey\x12\x1d\n" +
+	"\n" +
+	"secret_key\x18\x03 \x01(\tR\tsecretKey\"Y\n" +
 	"\x15InstanceAccessSetting\x12@\n" +
 	"\vaccess_mode\x18\x01 \x01(\x0e2\x1f.memos.store.InstanceAccessModeR\n" +
 	"accessMode\"\xa1\x03\n" +
@@ -1851,7 +1938,7 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\v_memo_countB\x15\n" +
 	"\x13_memo_content_bytesB\x10\n" +
 	"\x0e_storage_bytesB\x0f\n" +
-	"\r_upload_bytes*\xb3\x01\n" +
+	"\r_upload_bytes*\xc0\x01\n" +
 	"\x12InstanceSettingKey\x12$\n" +
 	" INSTANCE_SETTING_KEY_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05BASIC\x10\x01\x12\v\n" +
@@ -1863,7 +1950,9 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\x02AI\x10\a\x12\n" +
 	"\n" +
 	"\x06ACCESS\x10\b\x12\x10\n" +
-	"\fUSAGE_LIMITS\x10\t*s\n" +
+	"\fUSAGE_LIMITS\x10\t\x12\v\n" +
+	"\aCAPTCHA\x10\n" +
+	"*s\n" +
 	"\vStorageType\x12\x1c\n" +
 	"\x18STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15STORAGE_TYPE_DATABASE\x10\x01\x12\x16\n" +
@@ -1894,7 +1983,7 @@ func file_store_instance_setting_proto_rawDescGZIP() []byte {
 }
 
 var file_store_instance_setting_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_store_instance_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_store_instance_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_store_instance_setting_proto_goTypes = []any{
 	(InstanceSettingKey)(0),                          // 0: memos.store.InstanceSettingKey
 	(StorageType)(0),                                 // 1: memos.store.StorageType
@@ -1915,12 +2004,13 @@ var file_store_instance_setting_proto_goTypes = []any{
 	(*InstanceAISetting)(nil),                        // 16: memos.store.InstanceAISetting
 	(*AIProviderConfig)(nil),                         // 17: memos.store.AIProviderConfig
 	(*TranscriptionConfig)(nil),                      // 18: memos.store.TranscriptionConfig
-	(*InstanceAccessSetting)(nil),                    // 19: memos.store.InstanceAccessSetting
-	(*InstanceUsageLimitsSetting)(nil),               // 20: memos.store.InstanceUsageLimitsSetting
-	nil,                                              // 21: memos.store.InstanceTagsSetting.TagsEntry
-	(*InstanceNotificationSetting_EmailSetting)(nil), // 22: memos.store.InstanceNotificationSetting.EmailSetting
-	(*InstanceUsageLimitsSetting_UsageLimit)(nil),    // 23: memos.store.InstanceUsageLimitsSetting.UsageLimit
-	(*color.Color)(nil),                              // 24: google.type.Color
+	(*InstanceCaptchaSetting)(nil),                   // 19: memos.store.InstanceCaptchaSetting
+	(*InstanceAccessSetting)(nil),                    // 20: memos.store.InstanceAccessSetting
+	(*InstanceUsageLimitsSetting)(nil),               // 21: memos.store.InstanceUsageLimitsSetting
+	nil,                                              // 22: memos.store.InstanceTagsSetting.TagsEntry
+	(*InstanceNotificationSetting_EmailSetting)(nil), // 23: memos.store.InstanceNotificationSetting.EmailSetting
+	(*InstanceUsageLimitsSetting_UsageLimit)(nil),    // 24: memos.store.InstanceUsageLimitsSetting.UsageLimit
+	(*color.Color)(nil),                              // 25: google.type.Color
 }
 var file_store_instance_setting_proto_depIdxs = []int32{
 	0,  // 0: memos.store.InstanceSetting.key:type_name -> memos.store.InstanceSettingKey
@@ -1931,28 +2021,29 @@ var file_store_instance_setting_proto_depIdxs = []int32{
 	14, // 5: memos.store.InstanceSetting.tags_setting:type_name -> memos.store.InstanceTagsSetting
 	15, // 6: memos.store.InstanceSetting.notification_setting:type_name -> memos.store.InstanceNotificationSetting
 	16, // 7: memos.store.InstanceSetting.ai_setting:type_name -> memos.store.InstanceAISetting
-	19, // 8: memos.store.InstanceSetting.access_setting:type_name -> memos.store.InstanceAccessSetting
-	20, // 9: memos.store.InstanceSetting.usage_limits_setting:type_name -> memos.store.InstanceUsageLimitsSetting
-	8,  // 10: memos.store.InstanceGeneralSetting.custom_profile:type_name -> memos.store.InstanceCustomProfile
-	1,  // 11: memos.store.Storage.type:type_name -> memos.store.StorageType
-	11, // 12: memos.store.Storage.s3_config:type_name -> memos.store.StorageS3Config
-	4,  // 13: memos.store.InstanceStorageSetting.storage_type:type_name -> memos.store.InstanceStorageSetting.StorageType
-	11, // 14: memos.store.InstanceStorageSetting.s3_config:type_name -> memos.store.StorageS3Config
-	9,  // 15: memos.store.InstanceStorageSetting.storages:type_name -> memos.store.Storage
-	24, // 16: memos.store.InstanceTagMetadata.background_color:type_name -> google.type.Color
-	21, // 17: memos.store.InstanceTagsSetting.tags:type_name -> memos.store.InstanceTagsSetting.TagsEntry
-	22, // 18: memos.store.InstanceNotificationSetting.email:type_name -> memos.store.InstanceNotificationSetting.EmailSetting
-	17, // 19: memos.store.InstanceAISetting.providers:type_name -> memos.store.AIProviderConfig
-	18, // 20: memos.store.InstanceAISetting.transcription:type_name -> memos.store.TranscriptionConfig
-	2,  // 21: memos.store.AIProviderConfig.type:type_name -> memos.store.AIProviderType
-	3,  // 22: memos.store.InstanceAccessSetting.access_mode:type_name -> memos.store.InstanceAccessMode
-	23, // 23: memos.store.InstanceUsageLimitsSetting.limits:type_name -> memos.store.InstanceUsageLimitsSetting.UsageLimit
-	13, // 24: memos.store.InstanceTagsSetting.TagsEntry.value:type_name -> memos.store.InstanceTagMetadata
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	20, // 8: memos.store.InstanceSetting.access_setting:type_name -> memos.store.InstanceAccessSetting
+	21, // 9: memos.store.InstanceSetting.usage_limits_setting:type_name -> memos.store.InstanceUsageLimitsSetting
+	19, // 10: memos.store.InstanceSetting.captcha_setting:type_name -> memos.store.InstanceCaptchaSetting
+	8,  // 11: memos.store.InstanceGeneralSetting.custom_profile:type_name -> memos.store.InstanceCustomProfile
+	1,  // 12: memos.store.Storage.type:type_name -> memos.store.StorageType
+	11, // 13: memos.store.Storage.s3_config:type_name -> memos.store.StorageS3Config
+	4,  // 14: memos.store.InstanceStorageSetting.storage_type:type_name -> memos.store.InstanceStorageSetting.StorageType
+	11, // 15: memos.store.InstanceStorageSetting.s3_config:type_name -> memos.store.StorageS3Config
+	9,  // 16: memos.store.InstanceStorageSetting.storages:type_name -> memos.store.Storage
+	25, // 17: memos.store.InstanceTagMetadata.background_color:type_name -> google.type.Color
+	22, // 18: memos.store.InstanceTagsSetting.tags:type_name -> memos.store.InstanceTagsSetting.TagsEntry
+	23, // 19: memos.store.InstanceNotificationSetting.email:type_name -> memos.store.InstanceNotificationSetting.EmailSetting
+	17, // 20: memos.store.InstanceAISetting.providers:type_name -> memos.store.AIProviderConfig
+	18, // 21: memos.store.InstanceAISetting.transcription:type_name -> memos.store.TranscriptionConfig
+	2,  // 22: memos.store.AIProviderConfig.type:type_name -> memos.store.AIProviderType
+	3,  // 23: memos.store.InstanceAccessSetting.access_mode:type_name -> memos.store.InstanceAccessMode
+	24, // 24: memos.store.InstanceUsageLimitsSetting.limits:type_name -> memos.store.InstanceUsageLimitsSetting.UsageLimit
+	13, // 25: memos.store.InstanceTagsSetting.TagsEntry.value:type_name -> memos.store.InstanceTagMetadata
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_store_instance_setting_proto_init() }
@@ -1970,18 +2061,19 @@ func file_store_instance_setting_proto_init() {
 		(*InstanceSetting_AiSetting)(nil),
 		(*InstanceSetting_AccessSetting)(nil),
 		(*InstanceSetting_UsageLimitsSetting)(nil),
+		(*InstanceSetting_CaptchaSetting)(nil),
 	}
 	file_store_instance_setting_proto_msgTypes[4].OneofWrappers = []any{
 		(*Storage_S3Config)(nil),
 	}
-	file_store_instance_setting_proto_msgTypes[18].OneofWrappers = []any{}
+	file_store_instance_setting_proto_msgTypes[19].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_instance_setting_proto_rawDesc), len(file_store_instance_setting_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
