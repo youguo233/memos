@@ -61,7 +61,8 @@
     "signups-closed-description": "此实例已禁用新账号注册。如需访问，请联系管理员。",
     "signups-closed-title": "注册已关闭",
     "sso-signup-tip": "使用以下登录方式即可创建账号。",
-    "welcome-back": "欢迎回来。"
+    "welcome-back": "欢迎回来。",
+    "sign-in-with-passkey": "使用通行密钥登录"
   },
   "calendar": {
     "new-memo-on-day": "在这一天新建备忘录",
@@ -987,6 +988,17 @@
       "you": "您",
       "your-access": "您的访问权限",
       "your-spaces": "您的空间"
+    },
+    "passkey": {
+      "title": "通行密钥",
+      "description": "使用 Face ID、Touch ID、Windows Hello 或安全密钥免密码登录。",
+      "empty": "尚未添加通行密钥。",
+      "add": "添加通行密钥",
+      "name-prompt": "为此通行密钥命名",
+      "added": "已添加通行密钥。",
+      "delete-confirm": "删除通行密钥“{{name}}”？",
+      "created": "创建于",
+      "last-used": "上次使用"
     }
   },
   "tooltip": {

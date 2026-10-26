@@ -15,6 +15,7 @@ import ChangeMemberPasswordDialog from "../ChangeMemberPasswordDialog";
 import UpdateAccountDialog from "../UpdateAccountDialog";
 import UserAvatar from "../UserAvatar";
 import LinkedIdentitySection from "./LinkedIdentitySection";
+import PasskeySection from "./PasskeySection";
 import SettingGroup from "./SettingGroup";
 import SettingSection from "./SettingSection";
 import UsageSection from "./UsageSection";
@@ -74,6 +75,8 @@ const MyAccountSection = () => {
       <UsageSection />
 
       <LinkedIdentitySection />
+
+      <PasskeySection />
 
       <SettingGroup showSeparator title={t("setting.account.danger-area")} description={t("setting.account.danger-area-description")}>
         <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
