@@ -20,11 +20,17 @@ import (
 //go:embed assets/reference.docx
 var defaultReferenceDoc []byte
 
+// luaFilter styles the memo meta line and separators (see assets/memos.lua).
+//
+//go:embed assets/memos.lua
+var luaFilter []byte
+
 const pandocTimeout = 2 * time.Minute
 
 var (
 	refOnce sync.Once
 	refPath string
+	luaPath string
 )
 
 // pandocPath returns the pandoc binary (MEMOS_PANDOC_PATH or $PATH), or "".
@@ -42,14 +48,9 @@ func pandocPath() string {
 }
 
 // referenceDoc returns MEMOS_DOCX_REFERENCE_DOC if set, else the embedded
-// default written once to a temp file.
+// default. The embedded defaults (reference doc and Lua filter) are written
+// once to a temp dir.
 func referenceDoc() string {
-	if p := os.Getenv("MEMOS_DOCX_REFERENCE_DOC"); p != "" {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-		slog.Warn("docx export: MEMOS_DOCX_REFERENCE_DOC not readable, using default", "path", p)
-	}
 	refOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "memos-docx-ref-")
 		if err != nil {
@@ -59,7 +60,17 @@ func referenceDoc() string {
 		if os.WriteFile(p, defaultReferenceDoc, 0o600) == nil {
 			refPath = p
 		}
+		l := filepath.Join(dir, "memos.lua")
+		if os.WriteFile(l, luaFilter, 0o600) == nil {
+			luaPath = l
+		}
 	})
+	if p := os.Getenv("MEMOS_DOCX_REFERENCE_DOC"); p != "" {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+		slog.Warn("docx export: MEMOS_DOCX_REFERENCE_DOC not readable, using default", "path", p)
+	}
 	return refPath
 }
 
@@ -71,6 +82,9 @@ func pandocConvert(ctx context.Context, bin, markdown, title string) ([]byte, er
 	args := []string{"-f", "gfm+hard_line_breaks", "-t", "docx", "--sandbox", "-o", "-"}
 	if ref := referenceDoc(); ref != "" {
 		args = append(args, "--reference-doc", ref)
+	}
+	if luaPath != "" {
+		args = append(args, "--lua-filter", luaPath)
 	}
 	if title != "" {
 		args = append(args, "--metadata", "title="+title)
@@ -85,5 +99,10 @@ func pandocConvert(ctx context.Context, bin, markdown, title string) ([]byte, er
 	if stdout.Len() == 0 {
 		return nil, errors.New("pandoc produced no output")
 	}
-	return stdout.Bytes(), nil
+	out, err := polishDocx(stdout.Bytes())
+	if err != nil {
+		slog.Warn("docx export: post-processing failed, using raw pandoc output", "error", err)
+		return stdout.Bytes(), nil
+	}
+	return out, nil
 }

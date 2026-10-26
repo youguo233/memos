@@ -4,6 +4,10 @@ import (
 	"strings"
 )
 
+// metaMarker (U+2063 INVISIBLE SEPARATOR) prefixes the memo meta line; the
+// Lua filter (assets/memos.lua) strips it and styles the paragraph.
+const metaMarker = "\u2063"
+
 // entry is one memo rendered as a document section.
 type entry struct {
 	Title    string // heading, e.g. the created time
@@ -12,7 +16,7 @@ type entry struct {
 }
 
 // buildMarkdown assembles the combined GFM document fed to pandoc. Each memo
-// becomes a level-1 heading followed by an italic metadata line, its body,
+// becomes a level-1 heading followed by a gray metadata line, its body,
 // and a horizontal rule between memos. Headings inside memo bodies are
 // demoted by one level so they nest under the memo heading.
 func buildMarkdown(entries []entry) string {
@@ -25,7 +29,8 @@ func buildMarkdown(entries []entry) string {
 			b.WriteString("# " + escapeInline(e.Title) + "\n\n")
 		}
 		if e.Subtitle != "" {
-			b.WriteString("*" + escapeInline(e.Subtitle) + "*\n\n")
+			// metaMarker tells the embedded Lua filter to apply "Memo Meta".
+			b.WriteString(metaMarker + escapeInline(e.Subtitle) + "\n\n")
 		}
 		b.WriteString(demoteHeadings(strings.TrimSpace(e.Markdown)))
 		b.WriteString("\n")

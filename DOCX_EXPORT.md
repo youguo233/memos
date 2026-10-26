@@ -20,9 +20,9 @@ support (tables as tab-separated text, no images).
 ### How conversion works (pandoc)
 
 1. All selected memos are assembled into one GFM document: each memo is a
-   Heading 1 with its created time, an italic line with tags · visibility
-   (· updated time), then the memo body (its own headings are demoted one
-   level), with a horizontal rule between memos. The export title is set as
+   Heading 1 with its created time, a small gray "Memo Meta" line with
+   tags · visibility (· updated time; not italic, which looks bad for CJK), then the memo body (its own headings are demoted one
+   level), with a thin light-gray separator between memos. The export title is set as
    the document title.
 2. Images: `![](/file/attachments/{uid}/…)` links (relative or absolute URL)
    and image attachments of the memo that are not referenced inline are read
@@ -46,53 +46,21 @@ support (tables as tab-separated text, no images).
 | `MEMOS_DOCX_REMOTE_IMAGES` | `true` to download and embed external images |
 
 The default reference doc (`server/memodocx/assets/reference.docx`, embedded
-in the binary) is pandoc's default with CJK-friendly fonts: Calibri / Microsoft
-YaHei (East Asian), Consolas / SimSun for code, East Asian language zh-CN.
-Word substitutes installed fonts when those are missing (e.g. on macOS).
+in the binary) is generated from pandoc's default by
+`server/memodocx/assets/style_reference.py` (re-run it after changing styles):
 
-## HTTP API
+- Fonts: Latin **Arial**, East Asian **PingFang SC** (Word stores one name per
+  script; on Windows, where PingFang is absent, Word substitutes its default
+  CJK font such as Microsoft YaHei/DengXian), code **Consolas** (bundled with
+  Office on both Mac and Windows). zh-CN East Asian language.
+- Body 10.5 pt, dark gray `#262626`, line spacing 1.45, 6 pt after.
+- Memo time = Heading 1 at 13 pt bold, restrained navy `#1F3A5F`; memo-body
+  headings near-black 12/11/10.5 pt bold. Meta line 9 pt gray `#8C8C8C`.
+- Tables (`Table` style): 0.5 pt `#D9D9D9` grid, bold header row on
+  `#EEF2F6`, subtle banded rows, cell padding; Memos post-processes pandoc's
+  `document.xml` so tables span 100% of the text width.
+- Code blocks: Consolas 9 pt on `#F6F7F9` with a hairline border; inline code
+  shaded. Block quotes: gray left bar. Links `#2F6FB2`, no underline.
 
-Authenticated with the usual `Authorization: Bearer <token>` (access token or
-PAT) or the session cookie.
-
-```
-GET /file/memos/{uid}/docx?tz=Asia/Shanghai
-GET /file/users/me/memos.docx?start=<unix>&end=<unix>&tz=Asia/Shanghai
-```
-
-`start` is inclusive and `end` exclusive (Unix seconds, both optional); `tz` is
-an IANA zone for the printed times (default UTC). Single-memo export follows
-the same read rules as the memo API (public memos are exportable anonymously
-when the instance allows it).
-
-```sh
-curl -H "Authorization: Bearer $TOKEN" -o memos.docx \
-  "http://localhost:8081/file/users/me/memos.docx?tz=Asia/Shanghai"
-```
-
-## Running locally
-
-Requirements: Go (see `go.mod`), Node ≥ 24 and pnpm 11 (via corepack).
-
-```sh
-# build the frontend into the Go embed dir
-cd web && corepack enable && pnpm install --frozen-lockfile && pnpm release && cd ..
-# run the server (SQLite data in ./data)
-mkdir -p data && go run ./cmd/memos --port 8081 --data ./data
-# open http://localhost:8081
-```
-
-Install pandoc for full fidelity: `brew install pandoc`, `apt install pandoc`,
-or the static binary from <https://github.com/jgm/pandoc/releases> (3.x
-recommended; `--sandbox` needs ≥ 2.19).
-
-Or with Docker — the image bundles pandoc's official static binary on amd64
-and arm64 (arm/v7 has no static build and uses the built-in fallback). The Dockerfile embeds the prebuilt frontend, so run `pnpm release` first as above:
-
-```sh
-docker build -t memos-docx -f scripts/Dockerfile .
-docker run -d -p 5230:5230 -v ~/.memos:/var/opt/memos memos-docx
-```
-
-Tests: `go test ./internal/docx/ ./server/...` (the pandoc integration test is
-skipped when pandoc is not installed) and `cd web && pnpm lint`.
+An embedded Lua filter (`assets/memos.lua`, written to a temp file, works with
+`--sandbox`) applies the "Memo Meta" and "Memo Separator" styles.

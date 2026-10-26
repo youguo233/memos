@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -16,7 +17,7 @@ func TestBuildMarkdown(t *testing.T) {
 	})
 	for _, want := range []string{
 		"# 2026\\-10\\-26 10:00 CST\n\n",
-		"*\\#work \\#笔记 · PRIVATE*\n\n",
+		metaMarker + "\\#work \\#笔记 · PRIVATE\n\n",
 		"## 标题\n", // demoted from #
 		"| a | b |",
 		"```go\n# not a heading\n```", // code untouched
@@ -54,7 +55,7 @@ func TestPandocConvert(t *testing.T) {
 	if bin == "" {
 		t.Skip("pandoc not installed")
 	}
-	md := buildMarkdown([]entry{{Title: "t", Markdown: "中文\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] todo\n\n```go\nfunc main() {}\n```\n\n![img](data:image/png;base64," + pngB64 + ")"}})
+	md := buildMarkdown([]entry{{Title: "t", Subtitle: "#标签 · PRIVATE", Markdown: "中文\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] todo\n\n```go\nfunc main() {}\n```\n\n![img](data:image/png;base64," + pngB64 + ")"}})
 	out, err := pandocConvert(context.Background(), bin, md, "Memos")
 	if err != nil {
 		t.Fatal(err)
@@ -85,10 +86,16 @@ func TestPandocConvert(t *testing.T) {
 	if !media {
 		t.Error("no embedded image in word/media")
 	}
-	for _, want := range []string{"<w:tbl>", "中文", "todo", "func"} {
+	for _, want := range []string{"<w:tbl>", "中文", "todo", "func", `w:val="MemoMeta"`, `<w:tblW w:type="pct" w:w="5000"/>`} {
 		if !strings.Contains(doc, want) {
 			t.Errorf("document.xml missing %q", want)
 		}
+	}
+	if strings.Contains(doc, "\u2063") {
+		t.Error("meta marker leaked into document")
+	}
+	if os.Getenv("MEMOS_DOCX_SAMPLE_OUT") != "" {
+		_ = os.WriteFile(os.Getenv("MEMOS_DOCX_SAMPLE_OUT"), out, 0o644)
 	}
 	if !strings.Contains(numbering, "☐") {
 		t.Error("task list checkbox bullet missing")
