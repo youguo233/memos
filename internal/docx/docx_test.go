@@ -49,3 +49,27 @@ func TestWrite(t *testing.T) {
 		t.Error("hyperlink relationship missing")
 	}
 }
+
+func TestTaskCheckbox(t *testing.T) {
+	doc := &Document{Title: "T", Sections: []Section{{Markdown: "- [x] done\n- [ ] todo\n"}}}
+	var buf bytes.Buffer
+	if err := doc.Write(&buf); err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range zr.File {
+		if f.Name != "word/document.xml" {
+			continue
+		}
+		rc, _ := f.Open()
+		b, _ := io.ReadAll(rc)
+		rc.Close()
+		s := string(b)
+		if !strings.Contains(s, "\u2611") || !strings.Contains(s, "\u2610") || strings.Contains(s, "\u2612") {
+			t.Errorf("want ☑/☐ checkboxes and no ☒")
+		}
+	}
+}

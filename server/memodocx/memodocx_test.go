@@ -55,7 +55,7 @@ func TestPandocConvert(t *testing.T) {
 	if bin == "" {
 		t.Skip("pandoc not installed")
 	}
-	md := buildMarkdown([]entry{{Title: "t", Subtitle: "#标签 · PRIVATE", Markdown: "中文\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] todo\n\n```go\nfunc main() {}\n```\n\n![img](data:image/png;base64," + pngB64 + ")"}})
+	md := buildMarkdown([]entry{{Title: "t", Subtitle: "#标签 · PRIVATE", Markdown: "中文\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] todo\n- [x] done\n\n```go\nfunc main() {}\n```\n\n![img](data:image/png;base64," + pngB64 + ")"}})
 	out, err := pandocConvert(context.Background(), bin, md, "Memos")
 	if err != nil {
 		t.Fatal(err)
@@ -99,5 +99,11 @@ func TestPandocConvert(t *testing.T) {
 	}
 	if !strings.Contains(numbering, "☐") {
 		t.Error("task list checkbox bullet missing")
+	}
+	if strings.Contains(numbering, "\u2612") || strings.Contains(doc, "\u2612") {
+		t.Error("ugly ☒ checkbox leaked; want ☑")
+	}
+	if !strings.Contains(numbering, "\u2611") {
+		t.Error("checked task checkbox ☑ missing")
 	}
 }
