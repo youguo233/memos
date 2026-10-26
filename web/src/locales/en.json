@@ -459,7 +459,9 @@
       "public-description": "Anyone, even signed out",
       "space": "Members",
       "space-description": "Everyone in {{space}}"
-    }
+    },
+    "export-docx": "Export as Word (.docx)",
+    "export-docx-failed": "Failed to export the memo."
   },
   "message": {
     "archived-successfully": "Archived successfully",
@@ -690,7 +692,16 @@
       "review-exported": "Exported by",
       "review-file": "File",
       "review-memos": "Memos in file",
-      "review-new": "Will be created"
+      "review-new": "Will be created",
+      "docx-title": "Export to Word",
+      "docx-description": "Download your memos as one Word document (.docx), each memo headed by its created time and tags. Archived memos and comments are left out.",
+      "docx-range": "Date range",
+      "docx-range-detail": "Optional. Leave empty to include every memo.",
+      "docx-start": "Start date",
+      "docx-end": "End date",
+      "docx-label": "Download Word document",
+      "docx-detail": "A .docx file that opens in Word, WPS, Pages, or LibreOffice.",
+      "docx-action": "Export .docx"
     },
     "my-account": {
       "label": "My Account"

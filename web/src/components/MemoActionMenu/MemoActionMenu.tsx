@@ -7,6 +7,7 @@ import {
   CheckCheckIcon,
   CopyIcon,
   Edit3Icon,
+  FileDownIcon,
   FileTextIcon,
   LinkIcon,
   ListRestartIcon,
@@ -14,6 +15,7 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getErrorMessage } from "@/lib/error";
+import { exportMemoDocx } from "@/lib/memo-docx";
 import { State } from "@/types/proto/api/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { createMemoNavigationState } from "../MemoView/navigation";
@@ -105,6 +109,21 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     </DropdownMenuSub>
   );
 
+  const handleExportDocx = async () => {
+    try {
+      await exportMemoDocx(memo.name);
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+    }
+  };
+
+  const exportDocxItem = (
+    <DropdownMenuItem onClick={handleExportDocx}>
+      <FileDownIcon />
+      {t("memo.export-docx")}
+    </DropdownMenuItem>
+  );
+
   const deleteItem = (
     <DropdownMenuItem variant="destructive" onClick={handleDeleteMemoClick}>
       <TrashIcon />
@@ -118,6 +137,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <>
           {openItem}
           {copySubmenu}
+          {exportDocxItem}
         </>
       );
     }
@@ -173,6 +193,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <DropdownMenuSeparator />
         {openItem}
         {copySubmenu}
+        {exportDocxItem}
 
         <DropdownMenuSeparator />
         {deleteItem}

@@ -1,14 +1,16 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import dayjs from "dayjs";
-import { DownloadIcon, UploadIcon } from "lucide-react";
+import { DownloadIcon, FileDownIcon, UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { getErrorMessage } from "@/lib/error";
+import { exportAllMemosDocx } from "@/lib/memo-docx";
 import { exportMemos, importStagedMemos, type StagedMemoImport, stageMemoImport } from "@/lib/memo-export";
 import type { ImportMemosIssue, ImportMemosReport } from "@/types/proto/api/user_service_pb";
 import { ImportMemosRequest_ConflictPolicy } from "@/types/proto/api/user_service_pb";
@@ -60,6 +62,9 @@ const MemoExportSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [docxExporting, setDocxExporting] = useState(false);
+  const [docxStart, setDocxStart] = useState("");
+  const [docxEnd, setDocxEnd] = useState("");
   const [stage, setStage] = useState<ImportStage>({ kind: "idle" });
 
   const handleExport = async () => {
@@ -72,6 +77,18 @@ const MemoExportSection = () => {
       toast.error(getErrorMessage(error, t("setting.memo-export.export-failed")));
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    setDocxExporting(true);
+    try {
+      await exportAllMemosDocx(docxStart || undefined, docxEnd || undefined);
+      toast.success(t("setting.memo-export.export-success"));
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("setting.memo-export.export-failed")));
+    } finally {
+      setDocxExporting(false);
     }
   };
 
@@ -118,6 +135,36 @@ const MemoExportSection = () => {
             <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
               <DownloadIcon className="w-4 h-4 mr-1.5" />
               {exporting ? t("setting.memo-export.exporting") : t("setting.memo-export.export-action")}
+            </Button>
+          </SettingListItem>
+        </SettingList>
+      </SettingGroup>
+
+      <SettingGroup showSeparator title={t("setting.memo-export.docx-title")} description={t("setting.memo-export.docx-description")}>
+        <SettingList>
+          <SettingListItem label={t("setting.memo-export.docx-range")} description={t("setting.memo-export.docx-range-detail")}>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                className="h-8 w-36"
+                aria-label={t("setting.memo-export.docx-start")}
+                value={docxStart}
+                onChange={(e) => setDocxStart(e.target.value)}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="date"
+                className="h-8 w-36"
+                aria-label={t("setting.memo-export.docx-end")}
+                value={docxEnd}
+                onChange={(e) => setDocxEnd(e.target.value)}
+              />
+            </div>
+          </SettingListItem>
+          <SettingListItem label={t("setting.memo-export.docx-label")} description={t("setting.memo-export.docx-detail")}>
+            <Button variant="outline" size="sm" disabled={docxExporting} onClick={handleExportDocx}>
+              <FileDownIcon className="w-4 h-4 mr-1.5" />
+              {docxExporting ? t("setting.memo-export.exporting") : t("setting.memo-export.docx-action")}
             </Button>
           </SettingListItem>
         </SettingList>
