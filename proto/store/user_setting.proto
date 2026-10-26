@@ -47,6 +47,8 @@ message GeneralUserSetting {
   string theme = 3;
   // Whether the official client should save metadata from future media uploads.
   bool save_media_metadata = 4;
+  // The user's custom IANA time zone for exports; empty means the device zone.
+  string timezone = 5;
 }
 
 message UserTagMetadata {

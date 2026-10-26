@@ -30,6 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/error";
 import { exportMemoDocx, exportMemoMarkdown } from "@/lib/memo-docx";
 import { State } from "@/types/proto/api/common_pb";
@@ -48,6 +49,7 @@ import type { MemoActionMenuProps } from "./types";
 const MemoActionMenu = (props: MemoActionMenuProps) => {
   const { memo, parentPage, readonly } = props;
   const t = useTranslate();
+  const { userGeneralSetting } = useAuth();
 
   // Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -111,7 +113,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
 
   const handleExportDocx = async () => {
     try {
-      await exportMemoDocx(memo.name);
+      await exportMemoDocx(memo.name, userGeneralSetting?.timezone);
     } catch (error) {
       toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
     }
@@ -119,7 +121,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
 
   const handleExportMarkdown = async () => {
     try {
-      await exportMemoMarkdown(memo.name);
+      await exportMemoMarkdown(memo.name, userGeneralSetting?.timezone);
     } catch (error) {
       toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
     }

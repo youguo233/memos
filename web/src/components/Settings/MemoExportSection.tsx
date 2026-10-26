@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/contexts/AuthContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { getErrorMessage } from "@/lib/error";
 import { exportAllMemosDocx } from "@/lib/memo-docx";
@@ -58,6 +59,7 @@ const IssueList = ({ issues, tone }: { issues: ImportMemosIssue[]; tone: "warnin
 
 const MemoExportSection = () => {
   const t = useTranslate();
+  const { userGeneralSetting } = useAuth();
   const user = useCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -83,7 +85,7 @@ const MemoExportSection = () => {
   const handleExportDocx = async () => {
     setDocxExporting(true);
     try {
-      await exportAllMemosDocx(docxStart || undefined, docxEnd || undefined);
+      await exportAllMemosDocx(docxStart || undefined, docxEnd || undefined, userGeneralSetting?.timezone);
       toast.success(t("setting.memo-export.export-success"));
     } catch (error) {
       toast.error(getErrorMessage(error, t("setting.memo-export.export-failed")));

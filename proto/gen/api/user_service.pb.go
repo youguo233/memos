@@ -4315,8 +4315,11 @@ type UserSetting_GeneralSetting struct {
 	// Optional. Whether the official client should save metadata from future
 	// media uploads.
 	SaveMediaMetadata bool `protobuf:"varint,4,opt,name=save_media_metadata,json=saveMediaMetadata,proto3" json:"save_media_metadata,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Optional. A custom IANA time zone (e.g. Asia/Shanghai) used for exports.
+	// Empty means the device (browser) time zone.
+	Timezone      string `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UserSetting_GeneralSetting) Reset() {
@@ -4375,6 +4378,13 @@ func (x *UserSetting_GeneralSetting) GetSaveMediaMetadata() bool {
 		return x.SaveMediaMetadata
 	}
 	return false
+}
+
+func (x *UserSetting_GeneralSetting) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
 }
 
 // WebhooksSetting holds a user's webhooks.
@@ -5042,17 +5052,18 @@ const file_api_user_service_proto_rawDesc = "" +
 	"\x11DeleteUserRequest\x12*\n" +
 	"\x04name\x18\x01 \x01(\tB\x16\xe0A\x02\xfaA\x10\n" +
 	"\x0ememos.api/UserR\x04name\x12\x19\n" +
-	"\x05force\x18\x02 \x01(\bB\x03\xe0A\x01R\x05force\"\xdc\a\n" +
+	"\x05force\x18\x02 \x01(\bB\x03\xe0A\x01R\x05force\"\xfd\a\n" +
 	"\vUserSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12P\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2%.memos.api.UserSetting.GeneralSettingH\x00R\x0egeneralSetting\x12S\n" +
 	"\x10webhooks_setting\x18\x03 \x01(\v2&.memos.api.UserSetting.WebhooksSettingH\x00R\x0fwebhooksSetting\x12G\n" +
-	"\ftags_setting\x18\x04 \x01(\v2\".memos.api.UserSetting.TagsSettingH\x00R\vtagsSetting\x1a\xab\x01\n" +
+	"\ftags_setting\x18\x04 \x01(\v2\".memos.api.UserSetting.TagsSettingH\x00R\vtagsSetting\x1a\xcc\x01\n" +
 	"\x0eGeneralSetting\x12\x1b\n" +
 	"\x06locale\x18\x01 \x01(\tB\x03\xe0A\x01R\x06locale\x12,\n" +
 	"\x0fmemo_visibility\x18\x02 \x01(\tB\x03\xe0A\x01R\x0ememoVisibility\x12\x19\n" +
 	"\x05theme\x18\x03 \x01(\tB\x03\xe0A\x01R\x05theme\x123\n" +
-	"\x13save_media_metadata\x18\x04 \x01(\bB\x03\xe0A\x01R\x11saveMediaMetadata\x1aE\n" +
+	"\x13save_media_metadata\x18\x04 \x01(\bB\x03\xe0A\x01R\x11saveMediaMetadata\x12\x1f\n" +
+	"\btimezone\x18\x05 \x01(\tB\x03\xe0A\x01R\btimezone\x1aE\n" +
 	"\x0fWebhooksSetting\x122\n" +
 	"\bwebhooks\x18\x01 \x03(\v2\x16.memos.api.UserWebhookR\bwebhooks\x1a\xb1\x01\n" +
 	"\vTagsSetting\x12E\n" +

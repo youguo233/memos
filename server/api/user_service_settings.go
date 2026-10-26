@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -115,6 +116,13 @@ func (s *APIService) UpdateUserSetting(ctx context.Context, request *apipb.Updat
 				updatedGeneral.Locale = incomingGeneral.Locale
 			case "save_media_metadata":
 				updatedGeneral.SaveMediaMetadata = incomingGeneral.SaveMediaMetadata
+			case "timezone":
+				if tz := incomingGeneral.Timezone; tz != "" {
+					if _, err := time.LoadLocation(tz); err != nil || tz == "Local" {
+						return nil, status.Errorf(codes.InvalidArgument, "invalid timezone %q", tz)
+					}
+				}
+				updatedGeneral.Timezone = incomingGeneral.Timezone
 			default:
 				// Ignore unsupported fields.
 			}

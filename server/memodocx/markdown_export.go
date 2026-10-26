@@ -32,7 +32,7 @@ func (s *Service) serveMemoMarkdown(w http.ResponseWriter, r *http.Request) erro
 	if err := s.checkRead(ctx, r, memo); err != nil {
 		return err
 	}
-	loc := location(r)
+	loc := s.location(ctx, r)
 	data := []byte(s.memoMarkdown(ctx, memo, loc))
 	filename := "memo-" + time.Unix(memo.CreatedTs, 0).In(loc).Format("20060102-1504") + "-" + uid + ".md"
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")

@@ -5676,6 +5676,11 @@ components:
                     description: |-
                         Optional. Whether the official client should save metadata from future
                          media uploads.
+                timezone:
+                    type: string
+                    description: |-
+                        Optional. A custom IANA time zone (e.g. Asia/Shanghai) used for exports.
+                         Empty means the device (browser) time zone.
             description: GeneralSetting holds general user preferences.
         UserSetting_TagMetadata:
             type: object

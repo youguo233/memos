@@ -5,7 +5,8 @@
 //
 // start and end are optional Unix seconds bounding the memo create time
 // (start inclusive, end exclusive). tz is an optional IANA zone used to print
-// create times; it defaults to UTC.
+// create times; without it the caller's saved time zone preference, then
+// the server's local zone, is used.
 package memodocx
 
 import (
@@ -23,6 +24,7 @@ import (
 	"github.com/usememos/memos/core/access"
 	"github.com/usememos/memos/internal/docx"
 	"github.com/usememos/memos/internal/httphandler"
+	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
@@ -63,7 +65,7 @@ func (s *Service) serveMemo(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkRead(ctx, r, memo); err != nil {
 		return err
 	}
-	return s.render(ctx, w, "", []*store.Memo{memo}, location(r), "memo-"+uid+".docx")
+	return s.render(ctx, w, "", []*store.Memo{memo}, s.location(ctx, r), "memo-"+uid+".docx")
 }
 
 func (s *Service) serveAll(w http.ResponseWriter, r *http.Request) error {
@@ -88,7 +90,7 @@ func (s *Service) serveAll(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &httphandler.Error{Code: http.StatusInternalServerError, Message: "failed to list memos", Cause: err}
 	}
-	loc := location(r)
+	loc := s.location(ctx, r)
 	name := user.Nickname
 	if name == "" {
 		name = user.Username
@@ -176,13 +178,25 @@ func writeBytes(w http.ResponseWriter, data []byte, filename string) error {
 	return err
 }
 
-func location(r *http.Request) *time.Location {
+// location resolves the zone for printed times: the tz query parameter, then
+// the caller's saved custom time zone preference, then the server's local zone.
+func (s *Service) location(ctx context.Context, r *http.Request) *time.Location {
 	if tz := r.URL.Query().Get("tz"); tz != "" {
 		if loc, err := time.LoadLocation(tz); err == nil {
 			return loc
 		}
 	}
-	return time.UTC
+	if user, err := s.currentUser(ctx, r); err == nil && user != nil {
+		key := storepb.UserSetting_GENERAL
+		if setting, err := s.Store.GetUserSetting(ctx, &store.FindUserSetting{UserID: &user.ID, Key: key}); err == nil && setting != nil {
+			if tz := setting.GetGeneral().GetTimezone(); tz != "" {
+				if loc, err := time.LoadLocation(tz); err == nil {
+					return loc
+				}
+			}
+		}
+	}
+	return time.Local
 }
 
 func unixParam(r *http.Request, key string) (*int64, error) {

@@ -509,7 +509,13 @@
       "theme-description": "立即在当前设备上应用所选主题。",
       "theme": "主题",
       "uploads-privacy-description": "控制上传媒体时提交的隐私敏感信息。",
-      "uploads-privacy-title": "上传与隐私"
+      "uploads-privacy-title": "上传与隐私",
+      "timezone": "时区",
+      "timezone-description": "用于 Word 和 Markdown 导出中的时间。“系统时区”使用当前设备的时区（{{zone}}）。",
+      "timezone-system": "系统时区",
+      "timezone-custom": "自定义时区",
+      "timezone-search": "输入以搜索 IANA 时区，例如 Asia/Shanghai。",
+      "timezone-invalid": "未知的时区。"
     },
     "memo-view": {
       "create": "创建视图",

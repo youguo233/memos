@@ -843,7 +843,13 @@
       "theme-description": "Applies the selected theme immediately on this device.",
       "theme": "Theme",
       "uploads-privacy-description": "Control privacy-sensitive information submitted with uploaded media.",
-      "uploads-privacy-title": "Uploads & privacy"
+      "uploads-privacy-title": "Uploads & privacy",
+      "timezone": "Time zone",
+      "timezone-description": "Used for times in Word and Markdown exports. System uses this device ({{zone}}).",
+      "timezone-system": "System time zone",
+      "timezone-custom": "Custom time zone",
+      "timezone-search": "Type to search IANA zones, e.g. Asia/Shanghai.",
+      "timezone-invalid": "Unknown time zone."
     },
     "memo-view": {
       "create": "Create view",
