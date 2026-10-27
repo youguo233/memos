@@ -187,3 +187,10 @@
   flex: none;
   touch-action: manipulation;
 }
+
+/* While the docked toolbar shows, no rubber-band overscroll: on iOS it drags the
+   layout viewport (and fixed/absolute UI) under the keyboard. */
+html.mbe-toolbar-docked-open,
+html.mbe-toolbar-docked-open body {
+  overscroll-behavior: none;
+}

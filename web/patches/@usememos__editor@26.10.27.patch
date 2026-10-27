@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68d2427be9 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..69078e1d0542ceee92ffc6c55ded4dece63eb469 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -5878,6 +5878,10 @@ function visibleViewport(view) {
@@ -13,7 +13,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
  var isSafari = typeof navigator !== "undefined" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent);
  var isTouch = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
  var Popup = class {
-@@ -7686,13 +7690,59 @@ var FormatToolbar = class {
+@@ -7686,13 +7690,85 @@ var FormatToolbar = class {
      this.update();
      const view = this.editor.root.ownerDocument.defaultView;
      this.popup.el.style.maxWidth = `${Math.max(visibleViewport(view).width - 16, 0)}px`;
@@ -58,6 +58,26 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
 +      view.addEventListener("scroll", follow, { passive: true });
 +    }
 +    this.placeDocked(view);
++    // iOS moves the layout viewport during rubber-band overscroll without timely
++    // visualViewport events, so while docked the position is checked every frame,
++    // and overscroll of the page is turned off.
++    view.document.documentElement.classList.add("mbe-toolbar-docked-open");
++    if (this.dockFrame == null) {
++      const tick = () => {
++        if (!this.popup.isOpen || !el.classList.contains("mbe-toolbar-docked")) {
++          this.dockFrame = null;
++          return;
++        }
++        const vv = view.visualViewport;
++        const key = vv ? `${vv.offsetTop},${vv.offsetLeft},${vv.height},${vv.width},${view.scrollY}` : "";
++        if (key !== this.dockKey) {
++          this.dockKey = key;
++          this.placeDocked(view);
++        }
++        this.dockFrame = view.requestAnimationFrame(tick);
++      };
++      this.dockFrame = view.requestAnimationFrame(tick);
++    }
 +  }
 +  placeDocked(view) {
 +    const vp = visibleViewport(view);
@@ -71,10 +91,16 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.hideTooltip();
      this.popup.hide();
 +    this.popup.el.classList.remove("mbe-toolbar-docked");
++    this.editor.root.ownerDocument.documentElement.classList.remove("mbe-toolbar-docked-open");
++    if (this.dockFrame != null) {
++      this.editor.root.ownerDocument.defaultView?.cancelAnimationFrame(this.dockFrame);
++      this.dockFrame = null;
++    }
++    this.dockKey = "";
    }
    /** Closes the open menu and leaves the toolbar open. */
    closeMenu() {
-@@ -8559,6 +8609,8 @@ function fillContent(target, inline3, ctx, block3, reveal, cell2, decorated = tr
+@@ -8559,6 +8635,8 @@ function fillContent(target, inline3, ctx, block3, reveal, cell2, decorated = tr
    target.setAttribute(CONTENT_ATTR, "");
    if (inlineLength(inline3) === 0) {
      target.classList.add("mbe-empty-content");
@@ -83,7 +109,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      target.appendChild(fill(doc));
      return;
    }
-@@ -9269,6 +9321,15 @@ var BlockRenderer = class {
+@@ -9269,6 +9347,15 @@ var BlockRenderer = class {
        if (!el && ctx.source && block3.type === "code" && prev?.block.type === "code" && prev.el.parentNode === this.root && this.patchSource(prev.el, block3, ctx)) {
          el = prev.el;
        }
@@ -99,7 +125,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
        if (!el) {
          el = renderBlock(block3, ctx, reveal);
          if (prev && block3.type === "raw") keepDetailsOpen(prev.el, el);
-@@ -9410,11 +9471,16 @@ var BlockRenderer = class {
+@@ -9410,11 +9497,16 @@ var BlockRenderer = class {
      const prev = this.rendered.get(block3.id);
      if (!prev) return;
      this.rendered.set(block3.id, { ...prev, block: block3 });
@@ -118,7 +144,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
    }
    /** Brings source mode's rendered block up to date with the block's text and decorations, in place. False when it has no content element. */
    patchSource(el, block3, ctx = this.context()) {
-@@ -9623,6 +9689,75 @@ function positionToDom(blockEl, pos) {
+@@ -9623,6 +9715,75 @@ function positionToDom(blockEl, pos) {
    }
    return positionIn(content, pos.offset);
  }
@@ -194,7 +220,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
  function positionIn(content, offset) {
    let acc = 0;
    const all = leaves(content);
-@@ -10542,6 +10677,8 @@ var Editor = class {
+@@ -10542,6 +10703,8 @@ var Editor = class {
    pendingMode = null;
    renderer;
    composing = false;
@@ -203,7 +229,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
    /**
     * The current composition, kept until its block is rendered again: its
     * block, the marks for composed text, and whether it has an undo step yet.
-@@ -10756,7 +10893,10 @@ var Editor = class {
+@@ -10756,7 +10919,10 @@ var Editor = class {
        if (!this.readOnly) e.preventDefault();
      });
      this.listen(root, "drop", this.typed((e) => this.onDrop(e)));
@@ -215,7 +241,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.listen(root, "click", (e) => this.onClick(e));
      this.listen(root, "change", (e) => this.onControlChange(e));
      this.listen(root, "focusin", (e) => this.onFocusIn(e));
-@@ -11535,6 +11675,21 @@ var Editor = class {
+@@ -11535,6 +11701,21 @@ var Editor = class {
      if (sel.anchorNode === anchor.node && sel.anchorOffset === anchor.offset && sel.focusNode === focus.node && sel.focusOffset === focus.offset) {
        return;
      }
@@ -237,7 +263,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      if (target.focus.cell) {
        const host = (focus.node instanceof Element ? focus.node : focus.node.parentElement)?.closest("[data-row]");
        if (host && this.root.ownerDocument.activeElement !== host) host.focus({ preventScroll: true });
-@@ -11913,6 +12068,10 @@ var Editor = class {
+@@ -11913,6 +12094,10 @@ var Editor = class {
      const type = e.inputType;
      if (COMPOSITION_INPUT.has(type)) return;
      if (!e.cancelable && this.browserApplies(e)) return;
@@ -248,7 +274,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      e.preventDefault();
      if (this.readOnly) return;
      if (this.blockSel) {
-@@ -12012,6 +12171,22 @@ var Editor = class {
+@@ -12012,6 +12197,22 @@ var Editor = class {
          return false;
      }
    }
@@ -271,7 +297,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
    typeText(text) {
      this.run((s) => insertText(s, text), "typing");
      this.afterTyping(text);
-@@ -12055,12 +12230,29 @@ var Editor = class {
+@@ -12055,12 +12256,29 @@ var Editor = class {
      if (!samePosition(selection.focus, shortcut.applied.selection.focus)) return false;
      return this.run(() => shortcut.typed);
    }
@@ -301,7 +327,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12072,7 +12264,7 @@ var Editor = class {
+@@ -12072,7 +12290,7 @@ var Editor = class {
        this.reconcileFromDom("other");
        return;
      }
@@ -310,7 +336,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.composing = false;
      if (isSafari) this.compositionEndedAt = Date.now();
      this.unsettled.add(this.composition.blockId);
-@@ -12135,7 +12327,7 @@ var Editor = class {
+@@ -12135,7 +12353,7 @@ var Editor = class {
     * Reads the composed text into the model while composing. The browser's
     * DOM for the block already shows it, so the block is not re-rendered.
     */
@@ -319,7 +345,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      const composition = this.composition;
      if (!composition || this.readOnly) return;
      const before = this.state;
-@@ -12147,7 +12339,12 @@ var Editor = class {
+@@ -12147,7 +12365,12 @@ var Editor = class {
      }
      const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
      if (block3) this.renderer.adopt(block3);
@@ -333,7 +359,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
    }
    /**
-@@ -12204,6 +12401,7 @@ var Editor = class {
+@@ -12204,6 +12427,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
@@ -341,7 +367,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..b019294272c4c4025d5d402a294e7a68
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -13090,7 +13288,7 @@ var Editor = class {
+@@ -13090,7 +13314,7 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
