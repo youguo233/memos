@@ -1,8 +1,25 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c739a2a74e 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..6ee0ad065ab9a134b7df5df6671b2e49978491ef 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -9269,6 +9269,15 @@ var BlockRenderer = class {
+@@ -5878,6 +5878,7 @@ function visibleViewport(view) {
+   return vv ? { left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height } : { left: 0, top: 0, width: view.innerWidth, height: view.innerHeight };
+ }
+ var isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
++var isIOS = typeof navigator !== "undefined" && /AppleWebKit/.test(navigator.userAgent) && (/iPhone|iPad|iPod/.test(navigator.userAgent) || /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+ var isSafari = typeof navigator !== "undefined" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent);
+ var isTouch = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+ var Popup = class {
+@@ -8559,6 +8560,8 @@ function fillContent(target, inline3, ctx, block3, reveal, cell2, decorated = tr
+   target.setAttribute(CONTENT_ATTR, "");
+   if (inlineLength(inline3) === 0) {
+     target.classList.add("mbe-empty-content");
++    // An empty text node before the filler: iOS composes into an existing text node, as on a line that already has text.
++    target.appendChild(doc.createTextNode(""));
+     target.appendChild(fill(doc));
+     return;
+   }
+@@ -9269,6 +9272,15 @@ var BlockRenderer = class {
        if (!el && ctx.source && block3.type === "code" && prev?.block.type === "code" && prev.el.parentNode === this.root && this.patchSource(prev.el, block3, ctx)) {
          el = prev.el;
        }
@@ -18,7 +35,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
        if (!el) {
          el = renderBlock(block3, ctx, reveal);
          if (prev && block3.type === "raw") keepDetailsOpen(prev.el, el);
-@@ -9414,7 +9423,9 @@ var BlockRenderer = class {
+@@ -9414,7 +9426,9 @@ var BlockRenderer = class {
    }
    /** Forget a block's element so the next render rebuilds it, e.g. after the browser edited it during IME composition. */
    invalidate(id) {
@@ -29,7 +46,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
    }
    /** Brings source mode's rendered block up to date with the block's text and decorations, in place. False when it has no content element. */
    patchSource(el, block3, ctx = this.context()) {
-@@ -9623,6 +9634,62 @@ function positionToDom(blockEl, pos) {
+@@ -9623,6 +9637,72 @@ function positionToDom(blockEl, pos) {
    }
    return positionIn(content, pos.offset);
  }
@@ -56,7 +73,15 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
 +  if (a.length !== b.length || a.some((k, i) => k !== b[i] || el.getAttribute(k) !== fresh.getAttribute(k))) return false;
 +  const cur = plainShape(el);
 +  const want = plainShape(fresh);
-+  if (!cur || !want || want.texts.length > 1 || cur.texts.length > 1) return false;
++  if (!cur || !want) return false;
++  want.texts = want.texts.filter((t) => t.data);
++  if (want.texts.length > 1) return false;
++  // The browser may type into a new text node beside the empty one: keep the one with text, drop empty ones.
++  const full = cur.texts.filter((t) => t.data);
++  if (full.length > 1) return false;
++  const keep = full[0] ?? cur.texts[0];
++  for (const t of cur.texts) if (t !== keep) t.remove();
++  cur.texts = keep ? [keep] : [];
 +  const text = want.texts[0]?.data ?? "";
 +  if (text.includes("\n")) return false;
 +  if (text) {
@@ -78,8 +103,10 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
 +      }
 +      node.replaceData(start, endOld - start, text.slice(start, endNew));
 +    }
-+  } else if (cur.texts.length) {
-+    return false;
++  } else if (cur.texts[0]) {
++    if (cur.texts[0].data) cur.texts[0].deleteData(0, cur.texts[0].data.length);
++  } else {
++    el.insertBefore(el.ownerDocument.createTextNode(""), el.firstChild);
 +  }
 +  const filler = el.lastChild instanceof HTMLElement && el.lastChild.hasAttribute(FILL_ATTR) ? el.lastChild : null;
 +  if (want.fill && !filler) el.appendChild(fresh.lastChild);
@@ -92,7 +119,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
  function positionIn(content, offset) {
    let acc = 0;
    const all = leaves(content);
-@@ -10542,6 +10609,8 @@ var Editor = class {
+@@ -10542,6 +10622,8 @@ var Editor = class {
    pendingMode = null;
    renderer;
    composing = false;
@@ -101,7 +128,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
    /**
     * The current composition, kept until its block is rendered again: its
     * block, the marks for composed text, and whether it has an undo step yet.
-@@ -10756,7 +10825,10 @@ var Editor = class {
+@@ -10756,7 +10838,10 @@ var Editor = class {
        if (!this.readOnly) e.preventDefault();
      });
      this.listen(root, "drop", this.typed((e) => this.onDrop(e)));
@@ -113,7 +140,51 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      this.listen(root, "click", (e) => this.onClick(e));
      this.listen(root, "change", (e) => this.onControlChange(e));
      this.listen(root, "focusin", (e) => this.onFocusIn(e));
-@@ -12061,6 +12133,7 @@ var Editor = class {
+@@ -11535,6 +11620,12 @@ var Editor = class {
+     if (sel.anchorNode === anchor.node && sel.anchorOffset === anchor.offset && sel.focusNode === focus.node && sel.focusOffset === focus.offset) {
+       return;
+     }
++    // A collapsed browser caret already at the same model position is left alone: rewriting it makes iOS select the text it just inserted.
++    const host = this.renderer.elementFor(target.focus.blockId);
++    if (sel.isCollapsed && isCollapsed(target) && !parked && sel.anchorNode?.nodeType === 3 && sel.anchorNode.isConnected && host?.contains(sel.anchorNode) && (anchor.node.nodeType !== 3 || anchor.node === sel.anchorNode)) {
++      const dom = this.readDomSelection();
++      if (dom && isCollapsed(dom) && samePosition(dom.focus, target.focus)) return;
++    }
+     if (target.focus.cell) {
+       const host = (focus.node instanceof Element ? focus.node : focus.node.parentElement)?.closest("[data-row]");
+       if (host && this.root.ownerDocument.activeElement !== host) host.focus({ preventScroll: true });
+@@ -11913,6 +12004,7 @@ var Editor = class {
+     const type = e.inputType;
+     if (COMPOSITION_INPUT.has(type)) return;
+     if (!e.cancelable && this.browserApplies(e)) return;
++    if (isIOS && this.nativeText(e)) return;
+     e.preventDefault();
+     if (this.readOnly) return;
+     if (this.blockSel) {
+@@ -12012,6 +12104,22 @@ var Editor = class {
+         return false;
+     }
+   }
++  /**
++   * On iOS, typed and replaced text (keyboard, predictive candidates) is left to
++   * the browser and read back on `input`: when the editor applies it itself,
++   * the keyboard selects the text it inserted.
++   */
++  nativeText(e) {
++    const type = e.inputType;
++    if (type !== "insertText" && type !== "insertReplacementText") return false;
++    if (this.readOnly || this.blockSel || this.modeValue === "source") return false;
++    this.refreshSelection();
++    const { anchor, focus } = this.state.selection;
++    if (anchor.blockId !== focus.blockId || anchor.cell || focus.cell) return false;
++    if (selectedImageBlock(this.state)) return false;
++    const text = type === "insertText" ? e.data ?? "" : e.dataTransfer?.getData("text/plain") ?? e.data ?? "";
++    return !!text && !text.includes("\n");
++  }
+   typeText(text) {
+     this.run((s) => insertText(s, text), "typing");
+     this.afterTyping(text);
+@@ -12061,6 +12169,7 @@ var Editor = class {
      this.refreshSelection();
      if (!isCollapsed(this.state.selection)) this.run(deleteSelection);
      this.composing = true;
@@ -121,7 +192,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12072,7 +12145,7 @@ var Editor = class {
+@@ -12072,7 +12181,7 @@ var Editor = class {
        this.reconcileFromDom("other");
        return;
      }
@@ -130,7 +201,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      this.composing = false;
      if (isSafari) this.compositionEndedAt = Date.now();
      this.unsettled.add(this.composition.blockId);
-@@ -12135,7 +12208,7 @@ var Editor = class {
+@@ -12135,7 +12244,7 @@ var Editor = class {
     * Reads the composed text into the model while composing. The browser's
     * DOM for the block already shows it, so the block is not re-rendered.
     */
@@ -139,7 +210,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      const composition = this.composition;
      if (!composition || this.readOnly) return;
      const before = this.state;
-@@ -12147,7 +12220,11 @@ var Editor = class {
+@@ -12147,7 +12256,11 @@ var Editor = class {
      }
      const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
      if (block3) this.renderer.adopt(block3);
@@ -152,7 +223,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
    }
    /**
-@@ -12204,6 +12281,7 @@ var Editor = class {
+@@ -12204,6 +12317,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
@@ -160,7 +231,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c7
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -13090,7 +13168,7 @@ var Editor = class {
+@@ -13090,7 +13204,7 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
