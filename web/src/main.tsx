@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { InstanceProvider, useInstance } from "@/contexts/InstanceContext";
 import { useLiveMemoRefresh } from "@/hooks/useLiveMemoRefresh";
 import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
+import { installImeDebug, installIosSelectionGuard } from "@/lib/ime-debug";
 import { queryClient } from "@/lib/query-client";
 import router from "./router";
 import { applyLocaleEarly } from "./utils/i18n";
@@ -22,6 +23,8 @@ import { applyThemeEarly } from "./utils/theme";
 // Apply theme and locale early to prevent flash
 applyThemeEarly();
 applyLocaleEarly();
+installImeDebug();
+installIosSelectionGuard();
 
 // Inner component that initializes contexts
 function AppInitializer({ children }: { children: React.ReactNode }) {
