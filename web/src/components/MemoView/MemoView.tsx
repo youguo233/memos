@@ -1,12 +1,15 @@
 import { forwardRef, memo, Suspense, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useColumnGridUntrapped } from "@/components/ColumnGrid/ColumnGridContext";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useResolvedUser } from "@/contexts/MentionResolutionContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
+import { memoSelection, useMemoSelection } from "@/lib/memo-selection";
 import { isMemoBlurred } from "@/lib/tag";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/common_pb";
+import { useTranslate } from "@/utils/i18n";
 import { lazyWithReload } from "@/utils/lazy";
 import { canManageMemo } from "@/utils/user";
 import { MemoBody, MemoCommentListView, MemoHeader } from "./components";
@@ -37,6 +40,9 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
   const [cardWidth, setCardWidth] = useState(0);
 
   const currentUser = useCurrentUser();
+  const t = useTranslate();
+  const selecting = useMemoSelection((s) => s.active) && !memoData.parent;
+  const isSelected = useMemoSelection((s) => s.selected.has(memoData.name));
   const { userTagsSetting } = useAuth();
   const creator = useResolvedUser(memoData.creator, { enabled: Boolean(showCreator || props.shareImageDialogOpen) });
   const isArchived = memoData.state === State.ARCHIVED;
@@ -182,10 +188,21 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
 
   const article = (
     <article
+      data-selecting={selecting || undefined}
       className={cn(MEMO_CARD_BASE_CLASSES, "group/memo", showCommentPreview ? "mb-0 rounded-b-none" : "mb-2", className)}
       ref={cardRef}
       tabIndex={readonly ? -1 : 0}
     >
+      {selecting && (
+        <label className="-mx-1 mb-1 flex w-fit cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => memoSelection.toggle(memoData.name)}
+            aria-label={t("memo.batch-export.select-memo")}
+          />
+          {isSelected ? t("memo.batch-export.selected") : t("memo.batch-export.select-this")}
+        </label>
+      )}
       {showPinned && memoData.pinned && <MemoPinnedMark />}
       <MemoHeader timeDisplay={timeDisplay} showCreator={showCreator} showVisibility={showVisibility} showSpace={showSpace} />
 

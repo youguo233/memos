@@ -392,7 +392,24 @@
     "moved": "备忘录已移动",
     "export-docx": "导出为 Word (.docx)",
     "export-markdown": "导出为 Markdown (.md)",
-    "export-docx-failed": "导出备忘录失败。"
+    "export-docx-failed": "导出备忘录失败。",
+    "batch-export": {
+      "title": "导出备忘录",
+      "tag-heading": "导出 #{{tag}}",
+      "md-zip": "Markdown，每条一个文件 (.zip)",
+      "docx-zip": "Word，每条一个文件 (.zip)",
+      "md-merged": "Markdown，合并为一个文件 (.md)",
+      "docx-merged": "Word，合并为一个文件 (.docx)",
+      "select": "多选导出…",
+      "selected-count": "已选 {{count}} 条",
+      "select-all": "全选",
+      "select-none": "取消全选",
+      "export": "导出",
+      "failed": "导出备忘录失败。",
+      "select-memo": "选择要导出的备忘录",
+      "selected": "已选",
+      "select-this": "选择"
+    }
   },
   "message": {
     "archived-successfully": "归档成功",

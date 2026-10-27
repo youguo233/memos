@@ -45,6 +45,7 @@ func NewService(st *store.Store, dataDir, secret string) *Service {
 func (s *Service) RegisterRoutes(mux *http.ServeMux, fallback http.Handler) {
 	mux.Handle("/file/memos/{uid}/docx", httphandler.GET(httphandler.Func(s.serveMemo), fallback))
 	mux.Handle("/file/memos/{uid}/md", httphandler.GET(httphandler.Func(s.serveMemoMarkdown), fallback))
+	mux.Handle("POST /file/memos/export", httphandler.Func(s.serveBatch))
 	mux.Handle("/file/users/me/memos.docx", httphandler.GET(httphandler.Func(s.serveAll), fallback))
 }
 
@@ -108,6 +109,15 @@ func (s *Service) serveAll(w http.ResponseWriter, r *http.Request) error {
 // render converts memos with pandoc when available, otherwise with the
 // built-in pure-Go generator.
 func (s *Service) render(ctx context.Context, w http.ResponseWriter, title string, memos []*store.Memo, loc *time.Location, filename string) error {
+	data, err := s.renderDocx(ctx, title, memos, loc)
+	if err != nil {
+		return err
+	}
+	return writeBytes(w, data, filename)
+}
+
+// renderDocx returns the .docx bytes for memos.
+func (s *Service) renderDocx(ctx context.Context, title string, memos []*store.Memo, loc *time.Location) ([]byte, error) {
 	if bin := pandocPath(); bin != "" {
 		entries := make([]entry, 0, len(memos))
 		for _, memo := range memos {
@@ -120,10 +130,10 @@ func (s *Service) render(ctx context.Context, w http.ResponseWriter, title strin
 		}
 		out, err := pandocConvert(ctx, bin, md, title)
 		if err == nil {
-			return writeBytes(w, out, filename)
+			return out, nil
 		}
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return nil, ctx.Err()
 		}
 		slog.Warn("docx export: pandoc conversion failed, falling back to built-in generator", "error", err)
 	} else {
@@ -138,7 +148,11 @@ func (s *Service) render(ctx context.Context, w http.ResponseWriter, title strin
 	if len(doc.Sections) == 0 {
 		doc.Sections = []docx.Section{{Markdown: "_No memos in the selected range._"}}
 	}
-	return write(w, doc, filename)
+	var buf bytes.Buffer
+	if err := doc.Write(&buf); err != nil {
+		return nil, &httphandler.Error{Code: http.StatusInternalServerError, Message: "failed to render docx", Cause: err}
+	}
+	return buf.Bytes(), nil
 }
 
 var pandocMissingOnce sync.Once
@@ -157,14 +171,6 @@ func section(memo *store.Memo, loc *time.Location) docx.Section {
 		Subtitle: strings.Join(sub, " · "),
 		Markdown: memo.Content,
 	}
-}
-
-func write(w http.ResponseWriter, doc *docx.Document, filename string) error {
-	var buf bytes.Buffer
-	if err := doc.Write(&buf); err != nil {
-		return &httphandler.Error{Code: http.StatusInternalServerError, Message: "failed to render docx", Cause: err}
-	}
-	return writeBytes(w, buf.Bytes(), filename)
 }
 
 func writeBytes(w http.ResponseWriter, data []byte, filename string) error {

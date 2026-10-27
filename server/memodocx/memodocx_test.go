@@ -107,3 +107,13 @@ func TestPandocConvert(t *testing.T) {
 		t.Error("checked task checkbox ☑ missing")
 	}
 }
+
+func TestSafeAndUniqueName(t *testing.T) {
+	if got := safeName("调试/a b"); got != "调试_a_b" {
+		t.Fatalf("safeName = %q", got)
+	}
+	used := map[string]bool{}
+	if a, b := uniqueName(used, "x", ".md"), uniqueName(used, "x", ".md"); a != "x.md" || b != "x-2.md" {
+		t.Fatalf("uniqueName = %q %q", a, b)
+	}
+}

@@ -17,12 +17,14 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+import { MemoBatchExportButton, MemoSelectionBar } from "@/components/MemoBatchExport/MemoBatchExport";
 import MemoViewIcon from "@/components/MemoViewIcon";
 import { Button } from "@/components/ui/button";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import { type FilterFactor, getMemoFilterKey, type MemoFilter, useMemoFilterContext } from "@/contexts/MemoFilterContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useMemoViews } from "@/hooks/useUserQueries";
+import { useMemoSelection } from "@/lib/memo-selection";
 import { getMemoViewId, isMemoCollectionRoute } from "@/lib/memo-views";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -146,6 +148,8 @@ const MemoFilters = ({ className }: { className?: string }) => {
   // A remembered view only narrows the collection routes; elsewhere it is dormant and must not be echoed.
   const viewApplies = memoView !== undefined && isMemoCollectionRoute(location.pathname);
   const { data: memoViews = [] } = useMemoViews(viewApplies ? currentUser?.name : undefined);
+  const selecting = useMemoSelection((s) => s.active);
+  const activeTag = filters.find((f) => f.factor === "tagSearch")?.value;
 
   const handleRemoveFilter = (filter: MemoFilter) => {
     removeFilter((f: MemoFilter) => isEqual(f, filter));
@@ -170,26 +174,34 @@ const MemoFilters = ({ className }: { className?: string }) => {
       : null;
   })();
 
-  if (filters.length === 0 && !viewChip) {
+  if (filters.length === 0 && !viewChip && !selecting) {
     return null;
   }
 
   return (
-    <div className={cn("w-full flex flex-row justify-start items-center flex-wrap gap-2", className)}>
-      {viewChip && <FilterChip customIcon={viewChip.customIcon} label={viewChip.label} onRemove={() => setMemoView(undefined)} />}
-      {filters.map((filter) => (
-        <FilterChip
-          key={getMemoFilterKey(filter)}
-          icon={FILTER_CONFIGS[filter.factor]?.icon}
-          label={getFilterDisplayText(filter)}
-          onRemove={() => handleRemoveFilter(filter)}
-          onEdit={
-            FILTER_CONFIGS[filter.factor]?.editableQuery
-              ? { label: t("search.edit-query"), onClick: () => setQuickFindOpen(true) }
-              : undefined
-          }
-        />
-      ))}
+    <div className={cn("w-full flex flex-col gap-2", className)}>
+      {(filters.length > 0 || viewChip) && (
+        <div className="w-full flex flex-row justify-start items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-row flex-wrap items-center justify-start gap-2">
+            {viewChip && <FilterChip customIcon={viewChip.customIcon} label={viewChip.label} onRemove={() => setMemoView(undefined)} />}
+            {filters.map((filter) => (
+              <FilterChip
+                key={getMemoFilterKey(filter)}
+                icon={FILTER_CONFIGS[filter.factor]?.icon}
+                label={getFilterDisplayText(filter)}
+                onRemove={() => handleRemoveFilter(filter)}
+                onEdit={
+                  FILTER_CONFIGS[filter.factor]?.editableQuery
+                    ? { label: t("search.edit-query"), onClick: () => setQuickFindOpen(true) }
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+          {currentUser && !selecting && <MemoBatchExportButton tag={activeTag} />}
+        </div>
+      )}
+      {selecting && <MemoSelectionBar />}
     </div>
   );
 };

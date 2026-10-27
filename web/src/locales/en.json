@@ -463,7 +463,24 @@
     },
     "export-docx": "Export as Word (.docx)",
     "export-markdown": "Export as Markdown (.md)",
-    "export-docx-failed": "Failed to export the memo."
+    "export-docx-failed": "Failed to export the memo.",
+    "batch-export": {
+      "title": "Export memos",
+      "tag-heading": "Export #{{tag}}",
+      "md-zip": "Markdown, one file each (.zip)",
+      "docx-zip": "Word, one file each (.zip)",
+      "md-merged": "Markdown, one merged file (.md)",
+      "docx-merged": "Word, one merged file (.docx)",
+      "select": "Select memos to export…",
+      "selected-count": "{{count}} selected",
+      "select-all": "Select all",
+      "select-none": "Deselect all",
+      "export": "Export",
+      "failed": "Failed to export memos.",
+      "select-memo": "Select memo for export",
+      "selected": "Selected",
+      "select-this": "Select"
+    }
   },
   "message": {
     "archived-successfully": "Archived successfully",

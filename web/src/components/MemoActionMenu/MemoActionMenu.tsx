@@ -5,6 +5,7 @@ import {
   BookmarkMinusIcon,
   BookmarkPlusIcon,
   CheckCheckIcon,
+  CheckSquareIcon,
   CopyIcon,
   Edit3Icon,
   FileDownIcon,
@@ -33,6 +34,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/error";
 import { exportMemoDocx, exportMemoMarkdown } from "@/lib/memo-docx";
+import { memoSelection } from "@/lib/memo-selection";
 import { State } from "@/types/proto/api/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { createMemoNavigationState } from "../MemoView/navigation";
@@ -137,6 +139,12 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <FileDownIcon />
         {t("memo.export-markdown")}
       </DropdownMenuItem>
+      {!isComment && (
+        <DropdownMenuItem onClick={() => memoSelection.start(memo.name)}>
+          <CheckSquareIcon />
+          {t("memo.batch-export.select")}
+        </DropdownMenuItem>
+      )}
     </>
   );
 

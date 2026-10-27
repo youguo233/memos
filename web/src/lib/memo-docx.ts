@@ -46,3 +46,31 @@ export async function exportMemoMarkdown(memoName: string, tz?: string): Promise
   const uid = extractMemoIdFromName(memoName);
   await downloadDocx(`/file/memos/${encodeURIComponent(uid)}/md`, {}, `memo-${uid}.md`, tz);
 }
+
+export type BatchExportFormat = "md" | "docx";
+
+// exportMemosBatch downloads several memos at once: a zip with one file per
+// memo, or one merged file. Pass either memo names or a tag.
+export async function exportMemosBatch(
+  target: { names: string[] } | { tag: string },
+  format: BatchExportFormat,
+  options: { merge?: boolean; tz?: string } = {},
+): Promise<void> {
+  const query = new URLSearchParams({ tz: effectiveTimeZone(options.tz) });
+  const token = await getRequestToken();
+  const response = await fetch(`/file/memos/export?${query.toString()}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ ...target, format, merge: !!options.merge }),
+  });
+  if (!response.ok) {
+    throw new Error((await response.text()) || response.statusText);
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename\*=UTF-8''([^;]+)/.exec(disposition);
+  const filename = match ? decodeURIComponent(match[1]) : `memos.${options.merge ? format : "zip"}`;
+  const url = URL.createObjectURL(await response.blob());
+  downloadFileFromUrl(url, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
