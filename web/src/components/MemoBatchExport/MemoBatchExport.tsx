@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -74,13 +75,15 @@ export const MemoBatchExportButton = ({ tag }: { tag?: string }) => {
       <DropdownMenuContent align="end" className="w-60">
         {tag && (
           <>
-            <DropdownMenuLabel>{t("memo.batch-export.tag-heading", { tag })}</DropdownMenuLabel>
-            {choices.map((c) => (
-              <DropdownMenuItem key={c.format + c.merge} onClick={() => run({ tag }, c)}>
-                <c.icon />
-                {c.label}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{t("memo.batch-export.tag-heading", { tag })}</DropdownMenuLabel>
+              {choices.map((c) => (
+                <DropdownMenuItem key={c.format + c.merge} onClick={() => run({ tag }, c)}>
+                  <c.icon />
+                  {c.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
           </>
         )}
