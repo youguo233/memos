@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e266726b7c 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..9a92741450c02ce66a5ed066f6c5f99e019c2450 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -5878,6 +5878,10 @@ function visibleViewport(view) {
@@ -154,11 +154,20 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      this.listen(root, "click", (e) => this.onClick(e));
      this.listen(root, "change", (e) => this.onControlChange(e));
      this.listen(root, "focusin", (e) => this.onFocusIn(e));
-@@ -11535,6 +11629,12 @@ var Editor = class {
+@@ -11535,6 +11629,21 @@ var Editor = class {
      if (sel.anchorNode === anchor.node && sel.anchorOffset === anchor.offset && sel.focusNode === focus.node && sel.focusOffset === focus.offset) {
        return;
      }
 +    // A collapsed browser caret already at the same model position is left alone: rewriting it makes iOS select the text it just inserted.
++    // Right after a composition, a caret the browser already shows wins over a range the model may still hold.
++    if (sel.isCollapsed && sel.anchorNode && this.root.contains(sel.anchorNode) && !isCollapsed(target) && !parked && (this.composition || isSafari && Date.now() - (this.compositionEndedAt ?? 0) < 500)) {
++      const dom = this.readDomSelection();
++      if (dom && isCollapsed(dom)) {
++        imeDebugLog("syncDomSelection: kept browser caret after composition");
++        this.current = { ...this.current, selection: dom };
++        return;
++      }
++    }
 +    const host = this.renderer.elementFor(target.focus.blockId);
 +    if (sel.isCollapsed && isCollapsed(target) && !parked && sel.anchorNode?.nodeType === 3 && sel.anchorNode.isConnected && host?.contains(sel.anchorNode) && (anchor.node.nodeType !== 3 || anchor.node === sel.anchorNode)) {
 +      const dom = this.readDomSelection();
@@ -167,7 +176,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      if (target.focus.cell) {
        const host = (focus.node instanceof Element ? focus.node : focus.node.parentElement)?.closest("[data-row]");
        if (host && this.root.ownerDocument.activeElement !== host) host.focus({ preventScroll: true });
-@@ -11913,6 +12013,10 @@ var Editor = class {
+@@ -11913,6 +12022,10 @@ var Editor = class {
      const type = e.inputType;
      if (COMPOSITION_INPUT.has(type)) return;
      if (!e.cancelable && this.browserApplies(e)) return;
@@ -178,7 +187,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      e.preventDefault();
      if (this.readOnly) return;
      if (this.blockSel) {
-@@ -12012,6 +12116,22 @@ var Editor = class {
+@@ -12012,6 +12125,22 @@ var Editor = class {
          return false;
      }
    }
@@ -201,7 +210,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
    typeText(text) {
      this.run((s) => insertText(s, text), "typing");
      this.afterTyping(text);
-@@ -12055,12 +12175,29 @@ var Editor = class {
+@@ -12055,12 +12184,29 @@ var Editor = class {
      if (!samePosition(selection.focus, shortcut.applied.selection.focus)) return false;
      return this.run(() => shortcut.typed);
    }
@@ -231,7 +240,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12072,7 +12209,7 @@ var Editor = class {
+@@ -12072,7 +12218,7 @@ var Editor = class {
        this.reconcileFromDom("other");
        return;
      }
@@ -240,7 +249,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      this.composing = false;
      if (isSafari) this.compositionEndedAt = Date.now();
      this.unsettled.add(this.composition.blockId);
-@@ -12135,7 +12272,7 @@ var Editor = class {
+@@ -12135,7 +12281,7 @@ var Editor = class {
     * Reads the composed text into the model while composing. The browser's
     * DOM for the block already shows it, so the block is not re-rendered.
     */
@@ -249,20 +258,21 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      const composition = this.composition;
      if (!composition || this.readOnly) return;
      const before = this.state;
-@@ -12147,7 +12284,11 @@ var Editor = class {
+@@ -12147,7 +12293,12 @@ var Editor = class {
      }
      const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
      if (block3) this.renderer.adopt(block3);
 -    const selection = this.readDomSelection();
 +    let selection = this.readDomSelection();
-+    if (ending && selection && !isCollapsed(selection) && selection.anchor.blockId === selection.focus.blockId && !selection.anchor.cell && !selection.focus.cell) {
++    // The browser may select the marked text while composing (iOS does): that range is never the user's selection.
++    if (selection && !isCollapsed(selection) && selection.anchor.blockId === selection.focus.blockId && !selection.anchor.cell && !selection.focus.cell) {
 +      const end = selection.anchor.offset >= selection.focus.offset ? selection.anchor : selection.focus;
 +      selection = { anchor: end, focus: end };
 +    }
      this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
    }
    /**
-@@ -12204,6 +12345,7 @@ var Editor = class {
+@@ -12204,6 +12355,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
@@ -270,7 +280,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..245b8acd6f3396891787426d5fea27e2
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -13090,7 +13232,7 @@ var Editor = class {
+@@ -13090,7 +13242,7 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
