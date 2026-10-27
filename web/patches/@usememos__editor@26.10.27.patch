@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..c56d56a0dac0a2b368e194420449aa46266180a0 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..4421deb2ff2a17e5cb1405476bbab82fc3b7bd23 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -10542,6 +10542,8 @@ var Editor = class {
@@ -31,7 +31,43 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..c56d56a0dac0a2b368e194420449aa46
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12204,6 +12210,7 @@ var Editor = class {
+@@ -12072,7 +12078,7 @@ var Editor = class {
+       this.reconcileFromDom("other");
+       return;
+     }
+-    this.syncComposition();
++    this.syncComposition(true);
+     this.composing = false;
+     if (isSafari) this.compositionEndedAt = Date.now();
+     this.unsettled.add(this.composition.blockId);
+@@ -12135,7 +12141,7 @@ var Editor = class {
+    * Reads the composed text into the model while composing. The browser's
+    * DOM for the block already shows it, so the block is not re-rendered.
+    */
+-  syncComposition() {
++  syncComposition(ending = false) {
+     const composition = this.composition;
+     if (!composition || this.readOnly) return;
+     const before = this.state;
+@@ -12147,7 +12153,16 @@ var Editor = class {
+     }
+     const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
+     if (block3) this.renderer.adopt(block3);
+-    const selection = this.readDomSelection();
++    let selection = this.readDomSelection();
++    // iOS Safari still reports the marked (composed) text as the selection at
++    // compositionend; committing it would leave the new text selected, so the
++    // next keystroke replaces it. A finished composition leaves a caret at its end.
++    if (ending && selection && !isCollapsed(selection)) {
++      const { anchor, focus } = selection;
++      const sameContainer = anchor.blockId === focus.blockId && JSON.stringify(anchor.cell) === JSON.stringify(focus.cell);
++      const end = sameContainer ? (anchor.offset >= focus.offset ? anchor : focus) : focus;
++      selection = { anchor: end, focus: end };
++    }
+     this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
+   }
+   /**
+@@ -12204,6 +12219,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
@@ -39,7 +75,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..c56d56a0dac0a2b368e194420449aa46
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -13090,7 +13097,7 @@ var Editor = class {
+@@ -13090,7 +13106,7 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
