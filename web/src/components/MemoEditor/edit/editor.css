@@ -194,3 +194,17 @@ html.mbe-toolbar-docked-open,
 html.mbe-toolbar-docked-open body {
   overscroll-behavior: none;
 }
+
+/* Docked toolbar: fixed on <body>, placed by transform (no transition on position).
+   Hidden at once while the page is dragged or scrolls, faded back in once still. */
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked {
+  position: fixed;
+  z-index: 60;
+  will-change: transform, opacity;
+  transition: opacity 120ms ease-out;
+}
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked.mbe-toolbar-scroll-hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
