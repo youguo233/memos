@@ -1,80 +1,119 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..228cf25004664852e6bd8a62107b86ca17e83213 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..59b427c6c38f74c17e942fd3ee92f7c739a2a74e 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -10542,6 +10542,24 @@ var Editor = class {
+@@ -9269,6 +9269,15 @@ var BlockRenderer = class {
+       if (!el && ctx.source && block3.type === "code" && prev?.block.type === "code" && prev.el.parentNode === this.root && this.patchSource(prev.el, block3, ctx)) {
+         el = prev.el;
+       }
++      if (!el && !ctx.source && prev && prev.el.parentNode === this.root && sameReveal(prev.reveal, reveal)) {
++        // Replacing the element of the line being typed in makes iOS Safari
++        // select the text the keyboard just inserted (a committed IME
++        // composition or a predictive candidate), so the next keystroke
++        // replaces it. When the block renders as plain text, update the
++        // existing text node instead.
++        const fresh = renderBlock(block3, ctx, reveal);
++        el = patchPlainBlock(prev.el, fresh) ? prev.el : fresh;
++      }
+       if (!el) {
+         el = renderBlock(block3, ctx, reveal);
+         if (prev && block3.type === "raw") keepDetailsOpen(prev.el, el);
+@@ -9414,7 +9423,9 @@ var BlockRenderer = class {
+   }
+   /** Forget a block's element so the next render rebuilds it, e.g. after the browser edited it during IME composition. */
+   invalidate(id) {
+-    this.rendered.delete(id);
++    const prev = this.rendered.get(id);
++    // Keep the element so render() can update a plain-text block in place.
++    if (prev) this.rendered.set(id, { ...prev, block: STALE_BLOCK });
+   }
+   /** Brings source mode's rendered block up to date with the block's text and decorations, in place. False when it has no content element. */
+   patchSource(el, block3, ctx = this.context()) {
+@@ -9623,6 +9634,62 @@ function positionToDom(blockEl, pos) {
+   }
+   return positionIn(content, pos.offset);
+ }
++var STALE_BLOCK = Object.freeze({ id: "", type: "stale" });
++/** The plain-text shape of a rendered block: its text nodes and whether it ends in the empty-line filler. Null for anything else. */
++function plainShape(el) {
++  const texts = [];
++  let fill = false;
++  for (const child of Array.from(el.childNodes)) {
++    if (fill) return null;
++    if (child.nodeType === 3) texts.push(child);
++    else if (child instanceof HTMLElement && child.tagName === "BR" && child.hasAttribute(FILL_ATTR)) fill = true;
++    else return null;
++  }
++  return { texts, fill };
++}
++var PATCH_KEEP_CLASSES = ["mbe-show-hint", "mbe-lazy"];
++/** Makes `el` look like `fresh` by editing its one text node, when both are plain text. */
++function patchPlainBlock(el, fresh) {
++  if (el.tagName !== fresh.tagName) return false;
++  const names = (n) => n.getAttributeNames().filter((a) => a !== "class" && a !== "data-hint").sort();
++  const a = names(el);
++  const b = names(fresh);
++  if (a.length !== b.length || a.some((k, i) => k !== b[i] || el.getAttribute(k) !== fresh.getAttribute(k))) return false;
++  const cur = plainShape(el);
++  const want = plainShape(fresh);
++  if (!cur || !want || want.texts.length > 1 || cur.texts.length > 1) return false;
++  const text = want.texts[0]?.data ?? "";
++  if (text.includes("\n")) return false;
++  if (text) {
++    let node = cur.texts[0];
++    if (!node) {
++      // An empty line the editor types into: add the text to the same element.
++      node = el.ownerDocument.createTextNode("");
++      el.insertBefore(node, el.firstChild);
++    }
++    if (node.data !== text) {
++      const old = node.data;
++      let start = 0;
++      while (start < old.length && start < text.length && old[start] === text[start]) start++;
++      let endOld = old.length;
++      let endNew = text.length;
++      while (endOld > start && endNew > start && old[endOld - 1] === text[endNew - 1]) {
++        endOld--;
++        endNew--;
++      }
++      node.replaceData(start, endOld - start, text.slice(start, endNew));
++    }
++  } else if (cur.texts.length) {
++    return false;
++  }
++  const filler = el.lastChild instanceof HTMLElement && el.lastChild.hasAttribute(FILL_ATTR) ? el.lastChild : null;
++  if (want.fill && !filler) el.appendChild(fresh.lastChild);
++  else if (!want.fill && filler) filler.remove();
++  const kept = PATCH_KEEP_CLASSES.filter((c) => el.classList.contains(c));
++  el.className = fresh.className;
++  for (const c of kept) el.classList.add(c);
++  return true;
++}
+ function positionIn(content, offset) {
+   let acc = 0;
+   const all = leaves(content);
+@@ -10542,6 +10609,8 @@ var Editor = class {
    pendingMode = null;
    renderer;
    composing = false;
 +  /** Set by IME composition; the toolbar stays hidden until the user selects (pointer, Shift, Mod+A). */
 +  imeSelectionGuard = false;
-+  /**
-+   * Set when a composition ends, until the user moves or selects on purpose or
-+   * the DOM reports a caret. iOS Safari keeps reporting the composed (marked)
-+   * text as the selection after compositionend, most visibly in an empty block
-+   * whose placeholder the composition replaced; that range is not the user's.
-+   */
-+  imeCaretPending = false;
-+  /** A non-collapsed selection read from the DOM just after a composition becomes a caret at its end. */
-+  collapseImeSelection(selection) {
-+    if (!selection || isCollapsed(selection)) return selection;
-+    if (!(this.composition || this.imeCaretPending)) return selection;
-+    const { anchor, focus } = selection;
-+    const sameContainer = anchor.blockId === focus.blockId && JSON.stringify(anchor.cell) === JSON.stringify(focus.cell);
-+    const end = sameContainer ? anchor.offset >= focus.offset ? anchor : focus : focus;
-+    return { anchor: end, focus: end };
-+  }
    /**
     * The current composition, kept until its block is rendered again: its
     * block, the marks for composed text, and whether it has an undo step yet.
-@@ -10756,7 +10774,14 @@ var Editor = class {
+@@ -10756,7 +10825,10 @@ var Editor = class {
        if (!this.readOnly) e.preventDefault();
      });
      this.listen(root, "drop", this.typed((e) => this.onDrop(e)));
 -    this.listen(root, "mousedown", (e) => this.onMouseDown(e));
-+    this.listen(root, "touchstart", () => {
-+      this.imeCaretPending = false;
-+    }, { passive: true });
 +    this.listen(root, "mousedown", (e) => {
 +      this.imeSelectionGuard = false;
-+      this.imeCaretPending = false;
 +      this.onMouseDown(e);
 +    });
      this.listen(root, "click", (e) => this.onClick(e));
      this.listen(root, "change", (e) => this.onControlChange(e));
      this.listen(root, "focusin", (e) => this.onFocusIn(e));
-@@ -11559,7 +11584,20 @@ var Editor = class {
-   }
-   onSelectionChange() {
-     if (this.composing || this.destroyed) return;
--    const selection = this.readDomSelection();
-+    const domSelection = this.readDomSelection();
-+    if (domSelection && this.imeCaretPending && !this.composition) {
-+      if (isCollapsed(domSelection)) {
-+        this.imeCaretPending = false;
-+      } else {
-+        // The browser re-selected the composed text: put the caret back at its end.
-+        const caret = this.collapseImeSelection(domSelection);
-+        this.commit({ ...this.state, selection: clampSelection(this.state.doc, caret) });
-+        this.syncDomSelection(true);
-+        this.updateUi();
-+        return;
-+      }
-+    }
-+    const selection = domSelection;
-     if (!selection) {
-       if (!this.hasFocus()) this.updateUi();
-       return;
-@@ -11890,7 +11928,7 @@ var Editor = class {
-   /** The browser selection is the source of truth when an event starts. */
-   refreshSelection() {
-     if (this.blockSel) return;
--    const selection = this.readDomSelection();
-+    const selection = this.collapseImeSelection(this.readDomSelection());
-     if (selection) this.current = { ...this.state, selection };
-   }
-   /** The range the browser says an input event affects. */
-@@ -12061,6 +12099,7 @@ var Editor = class {
+@@ -12061,6 +12133,7 @@ var Editor = class {
      this.refreshSelection();
      if (!isCollapsed(this.state.selection)) this.run(deleteSelection);
      this.composing = true;
@@ -82,29 +121,16 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..228cf25004664852e6bd8a62107b86ca
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12072,7 +12111,8 @@ var Editor = class {
+@@ -12072,7 +12145,7 @@ var Editor = class {
        this.reconcileFromDom("other");
        return;
      }
 -    this.syncComposition();
-+    this.imeCaretPending = true;
 +    this.syncComposition(true);
      this.composing = false;
      if (isSafari) this.compositionEndedAt = Date.now();
      this.unsettled.add(this.composition.blockId);
-@@ -12094,6 +12134,11 @@ var Editor = class {
-     this.paint(this.redecoratePending);
-     this.redecoratePending = false;
-     this.afterRender();
-+    const caret = this.collapseImeSelection(this.state.selection);
-+    if (caret !== this.state.selection) {
-+      this.commit({ ...this.state, selection: clampSelection(this.state.doc, caret) });
-+      this.syncDomSelection(true);
-+    }
-     if (composed) this.typedForSuggestion();
-     if (this.pendingMode) this.setMode(this.pendingMode);
-   }
-@@ -12135,7 +12180,7 @@ var Editor = class {
+@@ -12135,7 +12208,7 @@ var Editor = class {
     * Reads the composed text into the model while composing. The browser's
     * DOM for the block already shows it, so the block is not re-rendered.
     */
@@ -113,40 +139,28 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..228cf25004664852e6bd8a62107b86ca
      const composition = this.composition;
      if (!composition || this.readOnly) return;
      const before = this.state;
-@@ -12147,7 +12192,11 @@ var Editor = class {
+@@ -12147,7 +12220,11 @@ var Editor = class {
      }
      const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
      if (block3) this.renderer.adopt(block3);
 -    const selection = this.readDomSelection();
 +    let selection = this.readDomSelection();
-+    // iOS Safari reports the marked (composed) text as the selection at and
-+    // after compositionend (also on the input event that follows it); keeping
-+    // it leaves the new text selected so the next keystroke replaces it.
-+    if (ending || !this.composing) selection = this.collapseImeSelection(selection);
++    if (ending && selection && !isCollapsed(selection) && selection.anchor.blockId === selection.focus.blockId && !selection.anchor.cell && !selection.focus.cell) {
++      const end = selection.anchor.offset >= selection.focus.offset ? selection.anchor : selection.focus;
++      selection = { anchor: end, focus: end };
++    }
      this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
    }
    /**
-@@ -12163,7 +12212,7 @@ var Editor = class {
-     for (const block3 of read.doc.blocks) {
-       if (block3 !== getBlock(this.state.doc, block3.id)) this.renderer.invalidate(block3.id);
-     }
--    const selection = this.readDomSelection() ?? read.selection;
-+    const selection = this.collapseImeSelection(this.readDomSelection()) ?? read.selection;
-     this.apply({ ...read, selection: clampSelection(read.doc, selection) }, kind);
-   }
-   /**
-@@ -12204,6 +12253,10 @@ var Editor = class {
+@@ -12204,6 +12281,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
-+    if (!e.isComposing && !this.composing && (e.shiftKey || (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a")) {
-+      this.imeSelectionGuard = false;
-+      this.imeCaretPending = false;
-+    }
++    if (!e.isComposing && !this.composing && (e.shiftKey || (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a")) this.imeSelectionGuard = false;
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -13090,7 +13143,7 @@ var Editor = class {
+@@ -13090,7 +13168,7 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
