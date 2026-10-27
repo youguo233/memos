@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -15,6 +16,8 @@ type renderer struct {
 	placeholderOffset  int
 	placeholderCounter int
 	args               []any
+	// loc is the zone timestamp accessors are evaluated in (nil = UTC).
+	loc *time.Location
 }
 
 type renderResult struct {
@@ -290,15 +293,29 @@ func (r *renderer) timestampAccessorExpr(field Field, accessor string) (string, 
 	col := qualifyColumn(r.dialect, field.Column)
 	var base string
 	var off int
+	zoned := !isUTC(r.loc)
 	switch r.dialect {
 	case DialectSQLite:
-		base = fmt.Sprintf("CAST(strftime('%s', %s, 'unixepoch') AS INTEGER)", spec.sqlite, col)
+		src := col
+		if zoned {
+			src = fmt.Sprintf("%s + %s", col, offsetSQL(r.loc, col))
+		}
+		base = fmt.Sprintf("CAST(strftime('%s', %s, 'unixepoch') AS INTEGER)", spec.sqlite, src)
 		off = spec.off[0]
 	case DialectPostgres:
-		base = fmt.Sprintf("CAST(EXTRACT(%s FROM to_timestamp(%s) AT TIME ZONE 'UTC') AS INTEGER)", spec.pg, col)
+		zone := "UTC"
+		if zoned {
+			zone = strings.ReplaceAll(r.loc.String(), "'", "")
+		}
+		base = fmt.Sprintf("CAST(EXTRACT(%s FROM to_timestamp(%s) AT TIME ZONE '%s') AS INTEGER)", spec.pg, col, zone)
 		off = spec.off[1]
 	case DialectMySQL:
-		base = fmt.Sprintf("%s(%s)", spec.mysql, col)
+		src := col
+		if zoned {
+			// The TIMESTAMP column reads in the session zone: take it to UTC, then shift by the offset.
+			src = fmt.Sprintf("DATE_ADD(CONVERT_TZ(%s, @@session.time_zone, '+00:00'), INTERVAL %s SECOND)", col, offsetSQL(r.loc, fmt.Sprintf("UNIX_TIMESTAMP(%s)", col)))
+		}
+		base = fmt.Sprintf("%s(%s)", spec.mysql, src)
 		off = spec.off[2]
 	default:
 		return "", errors.Errorf("unsupported dialect %q", r.dialect)

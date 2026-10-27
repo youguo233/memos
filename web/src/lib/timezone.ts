@@ -53,7 +53,9 @@ export const effectiveTimeZone = (custom?: string): string => custom || browserT
 dayjs.extend(utcPlugin);
 dayjs.extend(timezonePlugin);
 
-export const TZ_UI_MARKER = "mbe-tz-ui-v1";
+export const TZ_UI_MARKER = "mbe-tz-ui-v2";
+/** Request header carrying the viewer's zone for server-side filter date functions. */
+export const TIMEZONE_HEADER = "X-Memos-Timezone";
 
 let customZone = "";
 let version = 0;

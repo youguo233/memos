@@ -43,6 +43,7 @@ func NewEngine(schema Schema) (*Engine, error) {
 type Program struct {
 	schema    Schema
 	condition Condition
+	loc       *time.Location
 }
 
 // ConditionTree exposes the underlying condition tree.
@@ -51,7 +52,7 @@ func (p *Program) ConditionTree() Condition {
 }
 
 // Compile parses the filter string into an executable program.
-func (e *Engine) Compile(_ context.Context, filter string) (*Program, error) {
+func (e *Engine) Compile(ctx context.Context, filter string) (*Program, error) {
 	if strings.TrimSpace(filter) == "" {
 		return nil, errors.New("filter expression is empty")
 	}
@@ -60,12 +61,13 @@ func (e *Engine) Compile(_ context.Context, filter string) (*Program, error) {
 	if issues != nil && issues.Err() != nil {
 		return nil, errors.Wrap(issues.Err(), "failed to compile filter")
 	}
+	loc := LocationFromContext(ctx)
 	parsed, err := cel.AstToParsedExpr(ast)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert AST")
 	}
 
-	cond, err := buildCondition(parsed.GetExpr(), parseContext{schema: e.schema, now: e.nowFunc()})
+	cond, err := buildCondition(parsed.GetExpr(), parseContext{schema: e.schema, now: e.nowFunc(), loc: loc})
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +75,7 @@ func (e *Engine) Compile(_ context.Context, filter string) (*Program, error) {
 	return &Program{
 		schema:    e.schema,
 		condition: cond,
+		loc:       loc,
 	}, nil
 }
 
@@ -101,6 +104,7 @@ type Statement struct {
 // Render converts the program into a dialect-specific SQL fragment.
 func (p *Program) Render(opts RenderOptions) (Statement, error) {
 	renderer := newRenderer(p.schema, opts)
+	renderer.loc = p.loc
 	return renderer.Render(p.condition)
 }
 

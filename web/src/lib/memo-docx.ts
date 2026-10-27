@@ -1,7 +1,7 @@
+import dayjs from "dayjs";
 import { getRequestToken } from "@/connect";
 import { downloadFileFromUrl } from "@/lib/browser";
 import { extractMemoIdFromName } from "@/lib/resource-names";
-
 import { effectiveTimeZone } from "@/lib/timezone";
 
 async function downloadDocx(path: string, params: Record<string, string>, fallbackName: string, tz?: string): Promise<void> {
@@ -32,12 +32,10 @@ export async function exportMemoDocx(memoName: string, tz?: string): Promise<voi
 // optionally limited to memos created between two local dates (inclusive).
 export async function exportAllMemosDocx(startDate?: string, endDate?: string, tz?: string): Promise<void> {
   const params: Record<string, string> = {};
-  if (startDate) params.start = String(Math.floor(new Date(`${startDate}T00:00:00`).getTime() / 1000));
-  if (endDate) {
-    const end = new Date(`${endDate}T00:00:00`);
-    end.setDate(end.getDate() + 1);
-    params.end = String(Math.floor(end.getTime() / 1000));
-  }
+  // Day boundaries in the export zone (the custom zone, or the browser's).
+  const zone = effectiveTimeZone(tz);
+  if (startDate) params.start = String(dayjs.tz(`${startDate} 00:00:00`, zone).unix());
+  if (endDate) params.end = String(dayjs.tz(`${endDate} 00:00:00`, zone).add(1, "day").unix());
   await downloadDocx("/file/users/me/memos.docx", params, "memos.docx", tz);
 }
 

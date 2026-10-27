@@ -11,6 +11,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/usememos/memos/filter"
 	"github.com/usememos/memos/server/auth"
 )
 
@@ -61,6 +62,10 @@ func (*MetadataInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc 
 
 		// Set metadata in context so services can use metadata.FromIncomingContext()
 		ctx = metadata.NewIncomingContext(ctx, md)
+		// The viewer's zone for CEL date accessors in filters (mbe-tz-ui-v2).
+		if loc, ok := filter.ParseLocation(header.Get(filter.TimezoneHeader)); ok {
+			ctx = filter.WithLocation(ctx, loc)
+		}
 
 		// Execute the request
 		resp, err := next(ctx, req)
