@@ -16,6 +16,7 @@ import { useLiveMemoRefresh } from "@/hooks/useLiveMemoRefresh";
 import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
 import { installImeDebug, installIosSelectionGuard } from "@/lib/ime-debug";
 import { queryClient } from "@/lib/query-client";
+import { installUiTimeZone } from "@/lib/timezone";
 import router from "./router";
 import { applyLocaleEarly } from "./utils/i18n";
 import { applyThemeEarly } from "./utils/theme";
@@ -25,6 +26,7 @@ applyThemeEarly();
 applyLocaleEarly();
 installImeDebug();
 installIosSelectionGuard();
+installUiTimeZone();
 
 // Inner component that initializes contexts
 function AppInitializer({ children }: { children: React.ReactNode }) {

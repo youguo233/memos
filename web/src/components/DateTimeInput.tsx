@@ -1,5 +1,5 @@
-import dayjs from "dayjs";
 import toast from "react-hot-toast";
+import { zdayjs, zparse } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 // must be compatible with JS Date.parse(), we use ISO 8601 (almost)
@@ -7,7 +7,7 @@ const DATE_TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 
 // convert Date to datetime string.
 const formatDate = (date: Date): string => {
-  return dayjs(date).format(DATE_TIME_FORMAT);
+  return zdayjs(date).format(DATE_TIME_FORMAT);
 };
 
 interface Props {
@@ -25,7 +25,7 @@ const DateTimeInput: React.FC<Props> = ({ value, onChange }) => {
         const inputValue = e.target.value;
         if (inputValue) {
           // note: inputValue must be compatible with JS Date.parse()
-          const date = dayjs(inputValue).toDate();
+          const date = zparse(inputValue).toDate();
           // Check if the date is valid.
           if (!isNaN(date.getTime())) {
             onChange(date);

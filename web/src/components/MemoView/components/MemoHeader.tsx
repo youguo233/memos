@@ -6,6 +6,7 @@ import { FOCUS_VISIBLE_OUTLINE_CLASSES } from "@/components/ui/focus";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNewMemo } from "@/contexts/NewMemoContext";
 import i18n from "@/i18n";
+import { useUserTimeZone } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { getCreatorHomePath } from "@/router/routes";
 import { Visibility } from "@/types/proto/api/memo_service_pb";
@@ -27,6 +28,7 @@ const MEMO_HEADER_ACTION_CLASSES = cn(buttonVariants({ variant: "quiet", size: "
 
 const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showCreator, showVisibility, showSpace }) => {
   const t = useTranslate();
+  useUserTimeZone();
 
   const { memo, creator, currentUser, parentPage, isArchived, readonly, isEditing, openEditor } = useMemoViewContext();
   const location = useLocation();
@@ -135,6 +137,7 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showC
 
 const NewBadge = () => {
   const t = useTranslate();
+  useUserTimeZone();
   return (
     <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-2xs font-medium leading-none text-primary">
       {t("memo.new-badge")}

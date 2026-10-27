@@ -40,7 +40,7 @@ export const MonthPicker = ({ month, monthLabel, today }: MonthPickerProps) => {
   }, [open, shownYear]);
 
   const monthShortLabels = useMemo(
-    () => MONTHS.map((value) => new Date(2000, value - 1, 1).toLocaleString(i18n.language, { month: "short" })),
+    () => MONTHS.map((value) => new Date(Date.UTC(2000, value - 1, 15)).toLocaleString(i18n.language, { month: "short", timeZone: "UTC" })),
     [i18n.language],
   );
 
