@@ -1,0 +1,50 @@
+diff --git a/dist/index.js b/dist/index.js
+index 82c148ca30ee14861999effb9468423b0cd3638f..c56d56a0dac0a2b368e194420449aa46266180a0 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -10542,6 +10542,8 @@ var Editor = class {
+   pendingMode = null;
+   renderer;
+   composing = false;
++  /** Set by IME composition; the toolbar stays hidden until the user selects (pointer, Shift, Mod+A). */
++  imeSelectionGuard = false;
+   /**
+    * The current composition, kept until its block is rendered again: its
+    * block, the marks for composed text, and whether it has an undo step yet.
+@@ -10756,7 +10758,10 @@ var Editor = class {
+       if (!this.readOnly) e.preventDefault();
+     });
+     this.listen(root, "drop", this.typed((e) => this.onDrop(e)));
+-    this.listen(root, "mousedown", (e) => this.onMouseDown(e));
++    this.listen(root, "mousedown", (e) => {
++      this.imeSelectionGuard = false;
++      this.onMouseDown(e);
++    });
+     this.listen(root, "click", (e) => this.onClick(e));
+     this.listen(root, "change", (e) => this.onControlChange(e));
+     this.listen(root, "focusin", (e) => this.onFocusIn(e));
+@@ -12061,6 +12066,7 @@ var Editor = class {
+     this.refreshSelection();
+     if (!isCollapsed(this.state.selection)) this.run(deleteSelection);
+     this.composing = true;
++    this.imeSelectionGuard = true;
+     this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
+     this.toolbar?.hide();
+     this.imageToolbar?.hide();
+@@ -12204,6 +12210,7 @@ var Editor = class {
+     return changed ? state : null;
+   }
+   onKeyDown(e) {
++    if (!e.isComposing && !this.composing && (e.shiftKey || (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a")) this.imeSelectionGuard = false;
+     this.caretKey = null;
+     if (this.fromControl(e)) return;
+     if (e.isComposing || e.keyCode === 229) return;
+@@ -13090,7 +13097,7 @@ var Editor = class {
+     }
+     if (this.toolbar) {
+       const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
+-      const show = !this.toolbarClosedFor && focused && !this.readOnly && !this.composing && !isCollapsed(this.state.selection) && !this.blockSel && !image && !this.suggestions.isActive && !this.blockMenu.isOpen && !!block3 && !isPlainTextBlock(block3) && block3.type !== "divider";
++      const show = !this.toolbarClosedFor && focused && !this.readOnly && !this.composing && !this.imeSelectionGuard && !isCollapsed(this.state.selection) && !this.blockSel && !image && !this.suggestions.isActive && !this.blockMenu.isOpen && !!block3 && !isPlainTextBlock(block3) && block3.type !== "divider";
+       if (show) this.toolbar.show();
+       else this.toolbar.hide();
+     }
