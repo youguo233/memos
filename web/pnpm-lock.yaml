@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@bufbuild/protobuf@2.12.0': 9d60cec35402ba36bc21a72fefc68ccef8db0acb883504cc47c05a00a0029f8c
-  '@usememos/editor@26.10.27': 00730208574c87aa55a7c9d4283bed5d62a2567abe74774d577202eadc80c052
+  '@usememos/editor@26.10.27': 812eb24cc036168f614968e9003ec67e11746e384ace4d8ebe947d548ca57f43
 
 importers:
 
@@ -44,7 +44,7 @@ importers:
         version: 5.100.9(@tanstack/react-query@5.100.9(react@19.2.6))(react@19.2.6)
       '@usememos/editor':
         specifier: 26.10.27
-        version: 26.10.27(patch_hash=00730208574c87aa55a7c9d4283bed5d62a2567abe74774d577202eadc80c052)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 26.10.27(patch_hash=812eb24cc036168f614968e9003ec67e11746e384ace4d8ebe947d548ca57f43)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2704,7 +2704,7 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@usememos/editor@26.10.27(patch_hash=00730208574c87aa55a7c9d4283bed5d62a2567abe74774d577202eadc80c052)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@usememos/editor@26.10.27(patch_hash=812eb24cc036168f614968e9003ec67e11746e384ace4d8ebe947d548ca57f43)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     optionalDependencies:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
