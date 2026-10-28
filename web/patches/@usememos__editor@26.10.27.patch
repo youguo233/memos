@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c4f9fdd36 100644
+index 82c148ca30ee14861999effb9468423b0cd3638f..36354c441e5ab14f981f50092be0b7efcdae2401 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -5878,6 +5878,10 @@ function visibleViewport(view) {
@@ -13,7 +13,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
  var isSafari = typeof navigator !== "undefined" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent);
  var isTouch = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
  var Popup = class {
-@@ -7686,13 +7690,133 @@ var FormatToolbar = class {
+@@ -7686,13 +7690,137 @@ var FormatToolbar = class {
      this.update();
      const view = this.editor.root.ownerDocument.defaultView;
      this.popup.el.style.maxWidth = `${Math.max(visibleViewport(view).width - 16, 0)}px`;
@@ -37,7 +37,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
 +    if (!this.popup.isOpen) this.popup.show({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 }, "above", 0);
 +    if (el.parentElement !== doc.body) doc.body.appendChild(el);
 +    el.classList.add("mbe-toolbar-docked");
-+    el.dataset.mbeTb = "mbe-tb-v6";
++    el.dataset.mbeTb = "mbe-tb-v7";
 +    el.style.opacity = "";
 +    if (performance.now() - (this.lastMoveAt || 0) > 200 && el.classList.contains("mbe-toolbar-scroll-hide")) {
 +      el.classList.remove("mbe-toolbar-scroll-hide");
@@ -133,6 +133,10 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
 +    const x = Math.round(left + Math.max(8, (width - w) / 2));
 +    const y = Math.round(top + height - h - 8);
 +    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
++    this.dockX = x;
++    this.dockY = y;
++    this.dockTop = top;
++    this.dockLeft = left;
 +  }
    hide() {
      this.closeMenu();
@@ -148,7 +152,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
    }
    /** Closes the open menu and leaves the toolbar open. */
    closeMenu() {
-@@ -7700,6 +7824,7 @@ var FormatToolbar = class {
+@@ -7700,6 +7828,7 @@ var FormatToolbar = class {
      if (!t) return;
      this.openTrigger = null;
      t.menu.hide();
@@ -156,13 +160,14 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      t.button.classList.remove("mbe-open");
      t.button.setAttribute("aria-expanded", "false");
      this.onMenuChange?.();
-@@ -7799,8 +7924,64 @@ var FormatToolbar = class {
+@@ -7799,8 +7928,69 @@ var FormatToolbar = class {
    /** Puts the menu next to its button, on the side of the toolbar away from the selection. */
    placeMenu(t) {
      const rtl = this.editor.root.ownerDocument.defaultView.getComputedStyle(this.editor.root).direction === "rtl";
 +    const menuEl = t.menu.popup.el;
 +    if (this.popup.el.classList.contains("mbe-toolbar-docked")) return this.placeDockedMenu(t, rtl);
 +    menuEl.classList.remove("mbe-menu-docked");
++    menuEl.style.transform = "";
 +    menuEl.style.position = "";
 +    menuEl.style.zIndex = "";
      t.menu.popup.show(t.button.getBoundingClientRect(), this.popup.side, 4, rtl ? "end" : "start");
@@ -180,26 +185,30 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
 +    if (!popup.isOpen) popup.show({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 }, "above", 0);
 +    if (menuEl.parentElement !== doc.body) doc.body.appendChild(menuEl);
 +    menuEl.classList.add("mbe-menu-docked");
-+    menuEl.dataset.mbeTb = "mbe-tb-v6";
 +    menuEl.style.position = "fixed";
 +    menuEl.style.zIndex = "61";
-+    const vv = view.visualViewport;
-+    const vpTop = vv ? vv.offsetTop : 0;
-+    const vpLeft = vv ? vv.offsetLeft : 0;
-+    const vpWidth = vv ? vv.width : view.innerWidth;
++    // mbe-tb-v7: placed in the toolbar's own coordinates (the same fixed origin and
++    // translate the toolbar uses), so it stays anchored to it however iOS offsets the
++    // layout and visual viewports. Only differences of client rects are used.
 +    const bar = this.popup.el.getBoundingClientRect();
 +    const btn = t.button.getBoundingClientRect();
-+    const room = Math.max(bar.top - 6 - (vpTop + 8), 80);
++    const vv = view.visualViewport;
++    const vpWidth = vv ? vv.width : view.innerWidth;
++    const room = Math.max((this.dockY ?? 0) - (this.dockTop ?? 0) - 6 - 8, 80);
 +    menuEl.style.maxHeight = `${Math.floor(room)}px`;
 +    menuEl.style.overflowY = "auto";
 +    menuEl.style.boxSizing = "border-box";
 +    menuEl.style.overscrollBehavior = "contain";
++    menuEl.style.left = "0px";
++    menuEl.style.top = "0px";
 +    const w = menuEl.offsetWidth;
 +    const h = menuEl.offsetHeight;
-+    const start = rtl ? btn.right - w : btn.left;
-+    const left = Math.max(vpLeft + 8, Math.min(start, vpLeft + vpWidth - w - 8));
-+    menuEl.style.left = `${Math.round(left)}px`;
-+    menuEl.style.top = `${Math.round(bar.top - 6 - h)}px`;
++    const barX = this.dockX ?? 0;
++    const relLeft = (rtl ? btn.right - w : btn.left) - bar.left;
++    const minX = (this.dockLeft ?? 0) + 8;
++    const x = Math.max(minX, Math.min(barX + relLeft, minX + vpWidth - 16 - w));
++    menuEl.style.transform = `translate3d(${Math.round(x)}px, ${Math.round((this.dockY ?? 0) - 6 - h)}px, 0)`;
++    menuEl.dataset.mbeTb = "mbe-tb-v7";
 +    if (!menuEl.dataset.mbeTapBound) {
 +      menuEl.dataset.mbeTapBound = "1";
 +      let start2 = null;
@@ -221,7 +230,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
    scheduleTooltip(button) {
      clearTimeout(this.tooltipTimer);
      if (this.openTrigger) return;
-@@ -8559,6 +8740,8 @@ function fillContent(target, inline3, ctx, block3, reveal, cell2, decorated = tr
+@@ -8559,6 +8749,8 @@ function fillContent(target, inline3, ctx, block3, reveal, cell2, decorated = tr
    target.setAttribute(CONTENT_ATTR, "");
    if (inlineLength(inline3) === 0) {
      target.classList.add("mbe-empty-content");
@@ -230,7 +239,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      target.appendChild(fill(doc));
      return;
    }
-@@ -9269,6 +9452,15 @@ var BlockRenderer = class {
+@@ -9269,6 +9461,15 @@ var BlockRenderer = class {
        if (!el && ctx.source && block3.type === "code" && prev?.block.type === "code" && prev.el.parentNode === this.root && this.patchSource(prev.el, block3, ctx)) {
          el = prev.el;
        }
@@ -246,7 +255,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
        if (!el) {
          el = renderBlock(block3, ctx, reveal);
          if (prev && block3.type === "raw") keepDetailsOpen(prev.el, el);
-@@ -9410,11 +9602,16 @@ var BlockRenderer = class {
+@@ -9410,11 +9611,16 @@ var BlockRenderer = class {
      const prev = this.rendered.get(block3.id);
      if (!prev) return;
      this.rendered.set(block3.id, { ...prev, block: block3 });
@@ -265,7 +274,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
    }
    /** Brings source mode's rendered block up to date with the block's text and decorations, in place. False when it has no content element. */
    patchSource(el, block3, ctx = this.context()) {
-@@ -9623,6 +9820,75 @@ function positionToDom(blockEl, pos) {
+@@ -9623,6 +9829,75 @@ function positionToDom(blockEl, pos) {
    }
    return positionIn(content, pos.offset);
  }
@@ -341,7 +350,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
  function positionIn(content, offset) {
    let acc = 0;
    const all = leaves(content);
-@@ -10542,6 +10808,8 @@ var Editor = class {
+@@ -10542,6 +10817,8 @@ var Editor = class {
    pendingMode = null;
    renderer;
    composing = false;
@@ -350,7 +359,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
    /**
     * The current composition, kept until its block is rendered again: its
     * block, the marks for composed text, and whether it has an undo step yet.
-@@ -10756,7 +11024,14 @@ var Editor = class {
+@@ -10756,7 +11033,14 @@ var Editor = class {
        if (!this.readOnly) e.preventDefault();
      });
      this.listen(root, "drop", this.typed((e) => this.onDrop(e)));
@@ -366,7 +375,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      this.listen(root, "click", (e) => this.onClick(e));
      this.listen(root, "change", (e) => this.onControlChange(e));
      this.listen(root, "focusin", (e) => this.onFocusIn(e));
-@@ -11535,6 +11810,21 @@ var Editor = class {
+@@ -11535,6 +11819,21 @@ var Editor = class {
      if (sel.anchorNode === anchor.node && sel.anchorOffset === anchor.offset && sel.focusNode === focus.node && sel.focusOffset === focus.offset) {
        return;
      }
@@ -388,7 +397,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      if (target.focus.cell) {
        const host = (focus.node instanceof Element ? focus.node : focus.node.parentElement)?.closest("[data-row]");
        if (host && this.root.ownerDocument.activeElement !== host) host.focus({ preventScroll: true });
-@@ -11557,8 +11847,38 @@ var Editor = class {
+@@ -11557,8 +11856,38 @@ var Editor = class {
      if (!anchor || !focus) return null;
      return { anchor, focus };
    }
@@ -428,7 +437,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      const selection = this.readDomSelection();
      if (!selection) {
        if (!this.hasFocus()) this.updateUi();
-@@ -11913,6 +12233,10 @@ var Editor = class {
+@@ -11913,6 +12242,10 @@ var Editor = class {
      const type = e.inputType;
      if (COMPOSITION_INPUT.has(type)) return;
      if (!e.cancelable && this.browserApplies(e)) return;
@@ -439,7 +448,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      e.preventDefault();
      if (this.readOnly) return;
      if (this.blockSel) {
-@@ -12012,6 +12336,22 @@ var Editor = class {
+@@ -12012,6 +12345,22 @@ var Editor = class {
          return false;
      }
    }
@@ -462,7 +471,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
    typeText(text) {
      this.run((s) => insertText(s, text), "typing");
      this.afterTyping(text);
-@@ -12055,12 +12395,29 @@ var Editor = class {
+@@ -12055,12 +12404,29 @@ var Editor = class {
      if (!samePosition(selection.focus, shortcut.applied.selection.focus)) return false;
      return this.run(() => shortcut.typed);
    }
@@ -492,7 +501,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      this.composition = { blockId: this.state.selection.focus.blockId, marks: this.state.storedMarks, recorded: false };
      this.toolbar?.hide();
      this.imageToolbar?.hide();
-@@ -12072,7 +12429,7 @@ var Editor = class {
+@@ -12072,7 +12438,7 @@ var Editor = class {
        this.reconcileFromDom("other");
        return;
      }
@@ -501,7 +510,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      this.composing = false;
      if (isSafari) this.compositionEndedAt = Date.now();
      this.unsettled.add(this.composition.blockId);
-@@ -12135,7 +12492,7 @@ var Editor = class {
+@@ -12135,7 +12501,7 @@ var Editor = class {
     * Reads the composed text into the model while composing. The browser's
     * DOM for the block already shows it, so the block is not re-rendered.
     */
@@ -510,7 +519,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      const composition = this.composition;
      if (!composition || this.readOnly) return;
      const before = this.state;
-@@ -12147,7 +12504,12 @@ var Editor = class {
+@@ -12147,7 +12513,12 @@ var Editor = class {
      }
      const block3 = read.doc.blocks.find((b) => b.id === composition.blockId);
      if (block3) this.renderer.adopt(block3);
@@ -524,7 +533,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      this.commit(selection ? { ...read, selection: clampSelection(read.doc, selection) } : read);
    }
    /**
-@@ -12204,6 +12566,7 @@ var Editor = class {
+@@ -12204,6 +12575,7 @@ var Editor = class {
      return changed ? state : null;
    }
    onKeyDown(e) {
@@ -532,7 +541,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      this.caretKey = null;
      if (this.fromControl(e)) return;
      if (e.isComposing || e.keyCode === 229) return;
-@@ -12511,7 +12874,9 @@ var Editor = class {
+@@ -12511,7 +12883,9 @@ var Editor = class {
    onFocusIn(event) {
      if (this.focused || !this.hasFocus()) return;
      this.focused = true;
@@ -542,7 +551,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
      if (!this.pointerDown) this.refreshRevealed();
      this.options.onFocus?.(this);
      this.emit("focus", { editor: this, event });
-@@ -12522,6 +12887,10 @@ var Editor = class {
+@@ -12522,6 +12896,10 @@ var Editor = class {
      if (next && (this.root.contains(next) || this.inputPopover.contains(next))) return;
      queueMicrotask(() => {
        if (this.hasFocus() || this.inputPopover.isOpen) return;
@@ -553,7 +562,7 @@ index 82c148ca30ee14861999effb9468423b0cd3638f..973618e0bce38c45452b35226a89793c
        if (!this.focused) return;
        this.focused = false;
        this.root.classList.remove("mbe-focused");
-@@ -13090,7 +13459,13 @@ var Editor = class {
+@@ -13090,7 +13468,13 @@ var Editor = class {
      }
      if (this.toolbar) {
        const block3 = this.state.doc.blocks.find((b) => b.id === pos.blockId);
