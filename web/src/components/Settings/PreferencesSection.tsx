@@ -15,6 +15,7 @@ import VisibilityIcon from "../VisibilityIcon";
 import SettingGroup from "./SettingGroup";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
+import TimezoneSetting from "./TimezoneSetting";
 
 const PreferencesSection = () => {
   const t = useTranslate();
@@ -77,6 +78,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleTimezoneChange = (timezone: string) => {
+    updateUserGeneralSetting(
+      { generalSetting: { timezone }, updateMask: ["timezone"] },
+      {
+        onSuccess: async () => {
+          await refetchSettings();
+        },
+      },
+    );
+  };
+
   // Provide default values if setting is not loaded yet
   const setting: UserSetting_GeneralSetting =
     generalSetting ||
@@ -98,6 +110,8 @@ const PreferencesSection = () => {
           <SettingListItem label={t("setting.preference.theme")} description={t("setting.preference.theme-description")}>
             <ThemeSelect value={setting.theme} onValueChange={handleThemeChange} />
           </SettingListItem>
+
+          <TimezoneSetting value={setting.timezone} disabled={isUpdatingGeneralSetting} onChange={handleTimezoneChange} />
         </SettingList>
       </SettingGroup>
 

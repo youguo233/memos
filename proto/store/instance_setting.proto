@@ -27,6 +27,8 @@ enum InstanceSettingKey {
   // USAGE_LIMITS is the key for the ordered usage limits list, read and
   // replaced whole through the instance settings API.
   USAGE_LIMITS = 9;
+  // CAPTCHA is the Cloudflare Turnstile setting for password sign-in and signup.
+  CAPTCHA = 10;
 }
 
 message InstanceSetting {
@@ -41,6 +43,7 @@ message InstanceSetting {
     InstanceAISetting ai_setting = 8;
     InstanceAccessSetting access_setting = 9;
     InstanceUsageLimitsSetting usage_limits_setting = 10;
+    InstanceCaptchaSetting captcha_setting = 11;
   }
 }
 
@@ -239,6 +242,13 @@ enum InstanceAccessMode {
   INSTANCE_ACCESS_MODE_UNSPECIFIED = 0;
   INSTANCE_ACCESS_MODE_PRIVATE = 1;
   INSTANCE_ACCESS_MODE_PUBLIC = 2;
+}
+
+// InstanceCaptchaSetting configures Cloudflare Turnstile.
+message InstanceCaptchaSetting {
+  bool enabled = 1;
+  string site_key = 2;
+  string secret_key = 3;
 }
 
 message InstanceAccessSetting {

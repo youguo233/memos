@@ -191,6 +191,7 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 					MemoVisibility:    general.MemoVisibility,
 					Theme:             general.Theme,
 					SaveMediaMetadata: general.SaveMediaMetadata,
+					Timezone:          general.Timezone,
 				},
 			}
 		} else {
@@ -245,6 +246,7 @@ func convertUserSettingToStore(apiSetting *apipb.UserSetting, userID int32, key 
 					MemoVisibility:    general.MemoVisibility,
 					Theme:             general.Theme,
 					SaveMediaMetadata: general.SaveMediaMetadata,
+					Timezone:          general.Timezone,
 				},
 			}
 		} else {

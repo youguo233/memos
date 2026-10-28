@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { zdayjs } from "@/lib/timezone";
 import type { LocalFile } from "../types/attachment";
 import { useBlobUrls } from "./useBlobUrls";
 
@@ -35,14 +36,9 @@ function getFileExtension(mimeType: string): string {
 
 function createRecordedFile(blob: Blob, mimeType: string): File {
   const extension = getFileExtension(mimeType);
-  const now = new Date();
-  const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("");
-  const timePart = [
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0"),
-  ].join("");
-  return new File([blob], `voice-note-${datePart}-${timePart}.${extension}`, { type: mimeType });
+  // Named by the wall clock of the preferred zone.
+  const stamp = zdayjs().format("YYYYMMDD-HHmmss");
+  return new File([blob], `voice-note-${stamp}.${extension}`, { type: mimeType });
 }
 
 /**

@@ -5,8 +5,10 @@ import {
   BookmarkMinusIcon,
   BookmarkPlusIcon,
   CheckCheckIcon,
+  CheckSquareIcon,
   CopyIcon,
   Edit3Icon,
+  FileDownIcon,
   FileTextIcon,
   LinkIcon,
   ListRestartIcon,
@@ -14,6 +16,7 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { getErrorMessage } from "@/lib/error";
+import { exportMemoDocx, exportMemoMarkdown } from "@/lib/memo-docx";
+import { memoSelection } from "@/lib/memo-selection";
 import { State } from "@/types/proto/api/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { createMemoNavigationState } from "../MemoView/navigation";
@@ -44,6 +51,7 @@ import type { MemoActionMenuProps } from "./types";
 const MemoActionMenu = (props: MemoActionMenuProps) => {
   const { memo, parentPage, readonly } = props;
   const t = useTranslate();
+  const { userGeneralSetting } = useAuth();
 
   // Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -105,6 +113,41 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     </DropdownMenuSub>
   );
 
+  const handleExportDocx = async () => {
+    try {
+      await exportMemoDocx(memo.name, userGeneralSetting?.timezone);
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+    }
+  };
+
+  const handleExportMarkdown = async () => {
+    try {
+      await exportMemoMarkdown(memo.name, userGeneralSetting?.timezone);
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+    }
+  };
+
+  const exportDocxItem = (
+    <>
+      <DropdownMenuItem onClick={handleExportDocx}>
+        <FileDownIcon />
+        {t("memo.export-docx")}
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleExportMarkdown}>
+        <FileDownIcon />
+        {t("memo.export-markdown")}
+      </DropdownMenuItem>
+      {!isComment && (
+        <DropdownMenuItem onClick={() => memoSelection.start(memo.name)}>
+          <CheckSquareIcon />
+          {t("memo.batch-export.select")}
+        </DropdownMenuItem>
+      )}
+    </>
+  );
+
   const deleteItem = (
     <DropdownMenuItem variant="destructive" onClick={handleDeleteMemoClick}>
       <TrashIcon />
@@ -118,6 +161,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <>
           {openItem}
           {copySubmenu}
+          {exportDocxItem}
         </>
       );
     }
@@ -173,6 +217,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <DropdownMenuSeparator />
         {openItem}
         {copySubmenu}
+        {exportDocxItem}
 
         <DropdownMenuSeparator />
         {deleteItem}

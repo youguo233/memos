@@ -13,6 +13,7 @@ import (
 type parseContext struct {
 	schema Schema
 	now    time.Time
+	loc    *time.Location
 }
 
 func buildCondition(expr *exprv1.Expr, pc parseContext) (Condition, error) {
@@ -660,7 +661,7 @@ func buildTimestampAccessor(call *exprv1.Expr_Call, pc parseContext) (ValueExpr,
 		return nil, errors.Errorf("%s() with a timezone argument is not supported", call.Function)
 	}
 	if targetName == "now" {
-		return &LiteralValue{Value: foldNowAccessor(call.Function, pc.now)}, nil
+		return &LiteralValue{Value: foldNowAccessor(call.Function, pc.now.In(LocationOrUTC(pc.loc)))}, nil
 	}
 	field, ok := pc.schema.Field(targetName)
 	if !ok {
@@ -676,7 +677,7 @@ func buildTimestampAccessor(call *exprv1.Expr_Call, pc parseContext) (ValueExpr,
 // time in UTC, matching CEL result bases (0-based month, day-of-month, day-of-week
 // with 0 = Sunday, and day-of-year; 1-based getDate).
 func foldNowAccessor(accessor string, now time.Time) int64 {
-	t := now.UTC()
+	t := now
 	switch accessor {
 	case "getFullYear":
 		return int64(t.Year())

@@ -515,6 +515,10 @@ message UserSetting {
     // Optional. Whether the official client should save metadata from future
     // media uploads.
     bool save_media_metadata = 4 [(google.api.field_behavior) = OPTIONAL];
+
+    // Optional. A custom IANA time zone (e.g. Asia/Shanghai) used for exports.
+    // Empty means the device (browser) time zone.
+    string timezone = 5 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // WebhooksSetting holds a user's webhooks.

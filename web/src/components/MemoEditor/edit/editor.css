@@ -169,3 +169,42 @@
 .mbe-ui.mbe-tooltip {
   @apply max-w-[min(16rem,calc(100vw-1rem))] whitespace-normal rounded-md border border-border/70 bg-popover px-2 py-1 text-xs font-normal leading-4 tracking-normal text-popover-foreground text-pretty [overflow-wrap:anywhere] shadow-md;
 }
+
+/* Touch screens: the formatting toolbar docks above the keyboard (see the editor patch,
+   FormatToolbar.showDocked) so it never sits under iOS's Cut/Copy/Paste callout.
+   Scrolls sideways when it does not fit; buttons are at least 40px touch targets. */
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked {
+  @apply flex-nowrap overflow-x-auto overscroll-contain rounded-xl px-1 py-1;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked::-webkit-scrollbar {
+  display: none;
+}
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked .mbe-tool {
+  min-width: 40px;
+  min-height: 40px;
+  flex: none;
+  touch-action: manipulation;
+}
+
+/* While the docked toolbar shows, no rubber-band overscroll: on iOS it drags the
+   layout viewport (and fixed/absolute UI) under the keyboard. */
+html.mbe-toolbar-docked-open,
+html.mbe-toolbar-docked-open body {
+  overscroll-behavior: none;
+}
+
+/* Docked toolbar: fixed on <body>, placed by transform (no transition on position).
+   Hidden at once while the page is dragged or scrolls, faded back in once still. */
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked {
+  position: fixed;
+  z-index: 60;
+  will-change: transform, opacity;
+  transition: opacity 120ms ease-out;
+}
+.mbe-ui.mbe-toolbar.mbe-toolbar-docked.mbe-toolbar-scroll-hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}

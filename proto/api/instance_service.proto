@@ -147,6 +147,8 @@ message InstanceSetting {
     AccessSetting access_setting = 8;
     // The value of the USAGE_LIMITS setting.
     UsageLimitsSetting usage_limits_setting = 9;
+    // The value of the CAPTCHA setting.
+    CaptchaSetting captcha_setting = 10;
   }
 
   // Key identifies an instance setting.
@@ -168,6 +170,8 @@ message InstanceSetting {
     ACCESS = 7;
     // Usage limits.
     USAGE_LIMITS = 8;
+    // Cloudflare Turnstile captcha for password sign-in and signup.
+    CAPTCHA = 9;
   }
 
   // StorageType is the backend of a configured storage.
@@ -452,6 +456,20 @@ message InstanceSetting {
   }
 
   // AccessSetting is the instance access policy.
+  // CaptchaSetting configures Cloudflare Turnstile on password sign-in and signup.
+  message CaptchaSetting {
+    // Whether the captcha is required.
+    bool enabled = 1;
+    // The public Turnstile site key.
+    string site_key = 2;
+    // Write-only Turnstile secret key. Empty on update keeps the stored secret.
+    string secret_key = 3 [(google.api.field_behavior) = INPUT_ONLY];
+    // Output only. Whether a secret key is stored.
+    bool secret_key_set = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+    // Output only. Masked hint of the stored secret key.
+    string secret_key_hint = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+  }
+
   message AccessSetting {
     // Whether unauthenticated users may access instance content. Must be PRIVATE or PUBLIC on update.
     InstanceAccessMode access_mode = 1;

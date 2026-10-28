@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type { Element, Root as HtmlRoot } from "hast";
 import type { Root, RootContent } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -12,6 +11,7 @@ import type { MemoTimeBasis } from "@/contexts/ViewContext";
 import { getMemoSortTime } from "@/hooks/useMemoSorting";
 import { ISO_DATE_FORMAT } from "@/lib/calendar-utils";
 import { SANITIZE_SCHEMA } from "@/lib/html-sanitize-schema";
+import { zdayjs } from "@/lib/timezone";
 import type { Memo } from "@/types/proto/api/memo_service_pb";
 import { getAttachmentThumbnailUrl, getAttachmentUrl, isImage } from "@/utils/attachment";
 import { classifyManagedAttachmentImageURL, extractAttachmentUIDFromName } from "@/utils/managed-attachment";
@@ -147,7 +147,7 @@ export const buildCalendarMonthModel = (
   const model: CalendarMonthModel = {};
   const fileFallbacks = new Map<string, CalendarDayExcerpt>();
   for (const { memo, time } of dated) {
-    const date = dayjs(time).format(ISO_DATE_FORMAT);
+    const date = zdayjs(time).format(ISO_DATE_FORMAT);
     const summary = (model[date] ??= { memos: [], creators: [], images: [] });
     summary.memos.push(memo);
     if (!summary.creators.includes(memo.creator)) summary.creators.push(memo.creator);

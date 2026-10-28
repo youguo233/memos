@@ -1,3 +1,4 @@
+import { ArrowUpRightIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import RelativeTime from "@/components/RelativeTime";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { FOCUS_VISIBLE_OUTLINE_CLASSES } from "@/components/ui/focus";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNewMemo } from "@/contexts/NewMemoContext";
 import i18n from "@/i18n";
+import { useUserTimeZone } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { getCreatorHomePath } from "@/router/routes";
 import { Visibility } from "@/types/proto/api/memo_service_pb";
@@ -26,6 +28,7 @@ const MEMO_HEADER_ACTION_CLASSES = cn(buttonVariants({ variant: "quiet", size: "
 
 const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showCreator, showVisibility, showSpace }) => {
   const t = useTranslate();
+  useUserTimeZone();
 
   const { memo, creator, currentUser, parentPage, isArchived, readonly, isEditing, openEditor } = useMemoViewContext();
   const location = useLocation();
@@ -95,6 +98,21 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showC
       </div>
 
       <div data-slot="memo-header-actions" className="flex shrink-0 select-none flex-row items-center justify-end gap-1">
+        {!memo.parent && !isArchived && !isMemoDetailPath(location.pathname, memo.name) && (
+          // Mirrors the action menu's Open item, revealed like the reaction trigger.
+          <span className="flex sm:hidden sm:group-hover:flex sm:group-focus-within:flex">
+            <Tooltip>
+              <TooltipTrigger
+                aria-label={t("common.open")}
+                className={MEMO_HEADER_ACTION_CLASSES}
+                render={<Link to={`/${memo.name}`} state={createMemoNavigationState(parentPage)} viewTransition />}
+              >
+                <ArrowUpRightIcon />
+              </TooltipTrigger>
+              <TooltipContent>{t("common.open")}</TooltipContent>
+            </Tooltip>
+          </span>
+        )}
         {currentUser && !isArchived && (
           // On desktop the picker's trigger shows only while the card is engaged or the picker is open.
           <span className="flex sm:hidden sm:group-hover:flex sm:group-focus-within:flex sm:has-[[data-popup-open]]:flex">
@@ -119,6 +137,7 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showC
 
 const NewBadge = () => {
   const t = useTranslate();
+  useUserTimeZone();
   return (
     <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-2xs font-medium leading-none text-primary">
       {t("memo.new-badge")}

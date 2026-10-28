@@ -1,0 +1,16 @@
+import { webkit, devices } from "playwright";
+const b = await webkit.launch(); const p = await (await b.newContext(devices["iPhone 13"])).newPage();
+await p.goto("file:///tmp/h/index3.html"); await p.evaluate(()=>{document.body.style.height="3000px"});
+await p.click(".mbe-root p:nth-child(2)");
+await p.evaluate(() => { const t = document.querySelectorAll(".mbe-root > p")[1].firstChild; getSelection().setBaseAndExtent(t, 2, t, 8); });
+const st = (tag) => p.evaluate((tag) => { const tb=document.querySelector(".mbe-toolbar"); const r=tb.getBoundingClientRect(); return tag+" "+JSON.stringify({vis:!tb.hidden, parent:tb.parentElement.tagName, op:getComputedStyle(tb).opacity, hideCls:tb.classList.contains("mbe-toolbar-scroll-hide"), bottom:Math.round(r.bottom), vvBottom: visualViewport.offsetTop+visualViewport.height}); }, tag);
+await p.waitForTimeout(30); console.log(await st("t+30ms"));
+await p.evaluate(()=>scrollTo(0,200)); await p.waitForTimeout(20); console.log(await st("scrolling"));
+await p.waitForTimeout(300); console.log(await st("idle"));
+await p.setViewportSize({width:390,height:400}); await p.waitForTimeout(400); console.log(await st("keyboard"));
+await p.screenshot({path:"/workspace/toolbar-iphone-v3.png"});
+await p.tap(".mbe-tool-bold"); await p.waitForTimeout(100);
+console.log(await p.evaluate(()=>ed.getMarkdown().split("\n")[2]), await st("afterB"));
+await p.evaluate(()=>getSelection().collapseToEnd()); await p.waitForTimeout(100);
+console.log(await p.evaluate(()=>[document.querySelector(".mbe-toolbar").hidden, document.documentElement.className]));
+await b.close();

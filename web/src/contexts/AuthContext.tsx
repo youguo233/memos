@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
 import { clearAccessToken, getAccessToken } from "@/auth-state";
 import { authServiceClient, refreshAccessToken, userServiceClient } from "@/connect";
 import { userKeys } from "@/hooks/useUserQueries";
+import { setUserTimeZone } from "@/lib/timezone";
 import type {
   User,
   UserSetting_GeneralSetting,
@@ -201,6 +202,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [state, initialize, logout, refetchSettings, setCurrentUser],
   );
+
+  // The preferred zone for every time shown in the UI (see lib/timezone).
+  const preferredZone = state.userGeneralSetting?.timezone ?? "";
+  useLayoutEffect(() => setUserTimeZone(preferredZone), [preferredZone]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

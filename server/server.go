@@ -23,6 +23,7 @@ import (
 	"github.com/usememos/memos/server/fileserver"
 	"github.com/usememos/memos/server/frontend"
 	"github.com/usememos/memos/server/mcp"
+	"github.com/usememos/memos/server/memodocx"
 	"github.com/usememos/memos/store"
 )
 
@@ -100,10 +101,12 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create API handler")
 	}
+	apiService.RegisterPasskeyRoutes(mux)
 	frontendService := frontend.NewFrontendService(profile, store)
 	frontendService.Serve(ctx, mux, apiHandler)
 	fileServerService := fileserver.NewFileServerService(s.Profile, s.Store, s.Secret)
 	fileServerService.RegisterRoutes(mux, apiHandler)
+	memodocx.NewService(s.Store, s.Profile.Data, s.Secret).RegisterRoutes(mux, apiHandler)
 	// Preserve unclean-path routing without ServeMux's automatic redirects.
 	fallback := frontendService.Handler(apiHandler)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

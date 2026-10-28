@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { userServiceClient } from "@/connect";
 import { downloadFileFromUrl } from "@/lib/browser";
+import { zdayjs } from "@/lib/timezone";
 import type { ImportMemosPlan, ImportMemosReport, ImportMemosRequest } from "@/types/proto/api/user_service_pb";
 import { ImportMemosRequest_ConflictPolicy, ImportMemosSpecSchema } from "@/types/proto/api/user_service_pb";
 
@@ -10,7 +11,7 @@ const DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024;
 // exportMemos downloads the user's Memos export file.
 export async function exportMemos(userName: string, username: string): Promise<void> {
   const body = await userServiceClient.exportMemos({ name: userName });
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const stamp = zdayjs().format("YYYYMMDDTHHmmss");
   const url = URL.createObjectURL(new Blob([body.data as BlobPart], { type: body.contentType }));
   downloadFileFromUrl(url, `memos-export-${username}-${stamp}.zip`);
   // Give the browser a tick to start the download before revoking.

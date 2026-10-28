@@ -61,7 +61,8 @@
     "signups-closed-description": "New accounts are disabled on this instance. Contact your administrator if you need access.",
     "signups-closed-title": "Sign-ups are closed",
     "sso-signup-tip": "Sign in with a provider below to create your account.",
-    "welcome-back": "Welcome back."
+    "welcome-back": "Welcome back.",
+    "sign-in-with-passkey": "Sign in with passkey"
   },
   "calendar": {
     "new-memo-on-day": "New memo on this day",
@@ -459,6 +460,26 @@
       "public-description": "Anyone, even signed out",
       "space": "Members",
       "space-description": "Everyone in {{space}}"
+    },
+    "export-docx": "Export as Word (.docx)",
+    "export-markdown": "Export as Markdown (.md)",
+    "export-docx-failed": "Failed to export the memo.",
+    "batch-export": {
+      "title": "Export memos",
+      "tag-heading": "Export #{{tag}}",
+      "md-zip": "Markdown, one file each (.zip)",
+      "docx-zip": "Word, one file each (.zip)",
+      "md-merged": "Markdown, one merged file (.md)",
+      "docx-merged": "Word, one merged file (.docx)",
+      "select": "Select memos to export…",
+      "selected-count": "{{count}} selected",
+      "select-all": "Select all",
+      "select-none": "Deselect all",
+      "export": "Export",
+      "failed": "Failed to export memos.",
+      "select-memo": "Select memo for export",
+      "selected": "Selected",
+      "select-this": "Select"
     }
   },
   "message": {
@@ -690,7 +711,16 @@
       "review-exported": "Exported by",
       "review-file": "File",
       "review-memos": "Memos in file",
-      "review-new": "Will be created"
+      "review-new": "Will be created",
+      "docx-title": "Export to Word",
+      "docx-description": "Download your memos as one Word document (.docx), each memo headed by its created time and tags. Archived memos and comments are left out.",
+      "docx-range": "Date range",
+      "docx-range-detail": "Optional. Leave empty to include every memo.",
+      "docx-start": "Start date",
+      "docx-end": "End date",
+      "docx-label": "Download Word document",
+      "docx-detail": "A .docx file that opens in Word, WPS, Pages, or LibreOffice.",
+      "docx-action": "Export .docx"
     },
     "my-account": {
       "label": "My Account"
@@ -830,7 +860,13 @@
       "theme-description": "Applies the selected theme immediately on this device.",
       "theme": "Theme",
       "uploads-privacy-description": "Control privacy-sensitive information submitted with uploaded media.",
-      "uploads-privacy-title": "Uploads & privacy"
+      "uploads-privacy-title": "Uploads & privacy",
+      "timezone": "Time zone",
+      "timezone-description": "Used for times in Word and Markdown exports. System uses this device ({{zone}}).",
+      "timezone-system": "System time zone",
+      "timezone-custom": "Custom time zone",
+      "timezone-search": "Type to search IANA zones, e.g. Asia/Shanghai.",
+      "timezone-invalid": "Unknown time zone."
     },
     "memo-view": {
       "create": "Create view",
@@ -1060,6 +1096,27 @@
       "last-updated": "Last updated {{ago}}",
       "refresh": "Refresh",
       "load-error": "Failed to load statistics"
+    },
+    "passkey": {
+      "title": "Passkeys",
+      "description": "Sign in without a password using Face ID, Touch ID, Windows Hello, or a security key.",
+      "empty": "No passkeys yet.",
+      "add": "Add passkey",
+      "name-prompt": "Name this passkey",
+      "added": "Passkey added.",
+      "delete-confirm": "Delete passkey \"{{name}}\"?",
+      "created": "Created",
+      "last-used": "Last used"
+    },
+    "captcha": {
+      "title": "Captcha (Cloudflare Turnstile)",
+      "description": "Require a Turnstile check on password sign-in and sign-up. Passkey sign-in is not affected.",
+      "enable": "Enable Turnstile",
+      "site-key": "Site key",
+      "secret-key": "Secret key",
+      "secret-set": "Stored",
+      "secret-keep": "Leave empty to keep the stored secret",
+      "keys-required": "Site key and secret key are required to enable Turnstile."
     }
   },
   "space": {

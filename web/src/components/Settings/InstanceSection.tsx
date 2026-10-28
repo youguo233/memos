@@ -20,6 +20,7 @@ import {
 } from "@/types/proto/api/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import UpdateCustomizedProfileDialog from "../UpdateCustomizedProfileDialog";
+import CaptchaSettingGroup from "./CaptchaSettingGroup";
 import SettingGroup from "./SettingGroup";
 import { SettingCodeEditor, SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
@@ -226,6 +227,8 @@ const InstanceSection = () => {
           {t("common.save")}
         </Button>
       </div>
+
+      <CaptchaSettingGroup />
 
       <UpdateCustomizedProfileDialog
         open={customizeDialog.isOpen}

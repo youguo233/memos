@@ -1,0 +1,11 @@
+import { webkit, devices } from "playwright";
+const b = await webkit.launch(); const ctx = await b.newContext(devices["iPhone 13"]); const p = await ctx.newPage();
+await p.goto("file:///tmp/h/index2.html"); await p.click(".mbe-root p:nth-child(2)");
+await p.evaluate(() => { const t = document.querySelectorAll(".mbe-root > p")[1].firstChild; getSelection().setBaseAndExtent(t, 2, t, 8); });
+await p.waitForTimeout(200);
+await p.setViewportSize({ width: 390, height: 400 }); await p.waitForTimeout(300);
+console.log(await p.evaluate(() => { const r = document.querySelector(".mbe-toolbar").getBoundingClientRect(); return [Math.round(r.bottom), visualViewport.height]; }));
+await p.screenshot({ path: "/workspace/toolbar-iphone-keyboard.png" });
+console.log(await p.evaluate(()=>[...document.querySelectorAll(".mbe-toolbar .mbe-tool")].map(b=>b.className).join("|"))); await p.evaluate(()=>{window.ev=[];const b=document.querySelector(".mbe-tool-bold");["pointerdown","mousedown","click","touchstart"].forEach(t=>b.addEventListener(t,()=>ev.push(t)));}); await p.tap(".mbe-tool-bold"); console.log(await p.evaluate(()=>ev.join(","))); await p.waitForTimeout(200);
+console.log(await p.evaluate(() => JSON.stringify({ md: ed.getMarkdown(), sel: getSelection().toString() })));
+await b.close();

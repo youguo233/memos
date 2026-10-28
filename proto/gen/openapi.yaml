@@ -3927,6 +3927,10 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/InstanceSetting_UsageLimitsSetting'
                     description: The value of the USAGE_LIMITS setting.
+                captchaSetting:
+                    allOf:
+                        - $ref: '#/components/schemas/InstanceSetting_CaptchaSetting'
+                    description: The value of the CAPTCHA setting.
             description: InstanceSetting is one group of instance-wide settings, selected by its key.
         InstanceSetting_AIProviderConfig:
             type: object
@@ -3988,7 +3992,30 @@ components:
                     type: string
                     description: Whether unauthenticated users may access instance content. Must be PRIVATE or PUBLIC on update.
                     format: enum
-            description: AccessSetting is the instance access policy.
+        InstanceSetting_CaptchaSetting:
+            type: object
+            properties:
+                enabled:
+                    type: boolean
+                    description: Whether the captcha is required.
+                siteKey:
+                    type: string
+                    description: The public Turnstile site key.
+                secretKey:
+                    writeOnly: true
+                    type: string
+                    description: Write-only Turnstile secret key. Empty on update keeps the stored secret.
+                secretKeySet:
+                    readOnly: true
+                    type: boolean
+                    description: Output only. Whether a secret key is stored.
+                secretKeyHint:
+                    readOnly: true
+                    type: string
+                    description: Output only. Masked hint of the stored secret key.
+            description: |-
+                AccessSetting is the instance access policy.
+                 CaptchaSetting configures Cloudflare Turnstile on password sign-in and signup.
         InstanceSetting_GeneralSetting:
             type: object
             properties:
@@ -5649,6 +5676,11 @@ components:
                     description: |-
                         Optional. Whether the official client should save metadata from future
                          media uploads.
+                timezone:
+                    type: string
+                    description: |-
+                        Optional. A custom IANA time zone (e.g. Asia/Shanghai) used for exports.
+                         Empty means the device (browser) time zone.
             description: GeneralSetting holds general user preferences.
         UserSetting_TagMetadata:
             type: object

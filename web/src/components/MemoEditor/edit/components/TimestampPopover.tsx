@@ -2,23 +2,23 @@ import { type FC, useId, useRef, useState } from "react";
 import { MEMO_TIME_CONTROL_CLASSES } from "@/components/MemoView/constants";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import i18n from "@/i18n";
+import { zdayjs, zparse } from "@/lib/timezone";
 import { useTranslate } from "@/utils/i18n";
 import { useEditorContext, useEditorSelector } from "../state";
 
 const DATETIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 
 function formatDate(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return zdayjs(date).format(DATETIME_FORMAT);
 }
 
 function parseDate(value: string): Date | undefined {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
   if (!match || Number(match[1]) === 0) return undefined;
-  const date = new Date(0);
-  date.setFullYear(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  date.setHours(Number(match[4]), Number(match[5]), Number(match[6]), 0);
-  // Date normalizes overflowing fields (e.g. February 30) instead of rejecting them.
+  const parsed = zparse(value);
+  if (!parsed.isValid()) return undefined;
+  const date = parsed.toDate();
+  // Reject overflowing fields (e.g. February 30) instead of normalizing them.
   return formatDate(date) === value ? date : undefined;
 }
 

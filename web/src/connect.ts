@@ -2,6 +2,7 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { getAccessToken, hasStoredToken, isTokenExpired, REQUEST_TOKEN_EXPIRY_BUFFER_MS, setAccessToken } from "./auth-state";
+import { getUserTimezone, TIMEZONE_HEADER } from "./lib/timezone";
 import { AIService } from "./types/proto/api/ai_service_pb";
 import { AttachmentService } from "./types/proto/api/attachment_service_pb";
 import { AuthService } from "./types/proto/api/auth_service_pb";
@@ -62,11 +63,18 @@ const fetchWithCredentials: typeof globalThis.fetch = (input, init) => {
 };
 
 // Separate transport without auth interceptor to prevent recursion
+// Sends the viewer's zone (preferred, or the browser's on "System") so the server evaluates
+// CEL date accessors in filters (created_ts.getFullYear(), ...) in it. Marker: mbe-tz-ui-v2.
+const timezoneInterceptor: Interceptor = (next) => async (req) => {
+  req.header.set(TIMEZONE_HEADER, getUserTimezone());
+  return next(req);
+};
+
 const refreshTransport = createConnectTransport({
   baseUrl: window.location.origin,
   useBinaryFormat: true,
   fetch: fetchWithCredentials,
-  interceptors: [],
+  interceptors: [timezoneInterceptor],
 });
 
 const refreshAuthClient = createClient(AuthService, refreshTransport);
@@ -185,7 +193,7 @@ const transport = createConnectTransport({
   baseUrl: window.location.origin,
   useBinaryFormat: true,
   fetch: fetchWithCredentials,
-  interceptors: [authInterceptor],
+  interceptors: [timezoneInterceptor, authInterceptor],
 });
 
 // Core service clients

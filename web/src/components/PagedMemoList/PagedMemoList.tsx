@@ -12,6 +12,7 @@ import { useInfiniteMemos } from "@/hooks/useMemoQueries";
 import { hoistMemoToFront } from "@/hooks/useMemoSorting";
 import { combineCELFilters } from "@/lib/cel-filter";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE, LOADING_INDICATOR_DELAY_MS } from "@/lib/constants";
+import { memoSelection, useMemoSelection } from "@/lib/memo-selection";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/common_pb";
 import type { Memo } from "@/types/proto/api/memo_service_pb";
@@ -230,10 +231,16 @@ const PagedMemoList = (props: Props) => {
     [props.showCreator, displayMemoList],
   );
 
-  const hasFilters = filters.length > 0 || memoView !== undefined;
+  const selecting = useMemoSelection((s) => s.active);
+  const hasActiveFilters = filters.length > 0 || memoView !== undefined;
+  const hasFilters = hasActiveFilters || selecting;
+  useEffect(() => {
+    memoSelection.setVisible(displayMemoList.map((m) => m.name));
+  }, [displayMemoList]);
+  useEffect(() => () => memoSelection.exit(), []);
   const emptyPlaceholder =
     !isDisplayPending && !isError && !isFetchingNextPage && !hasNextPage && displayMemoList.length === 0 ? (
-      <Placeholder scene={hasFilters ? "search" : "memo"} message={props.emptyMessage ?? t("message.no-data")} className="w-full" />
+      <Placeholder scene={hasActiveFilters ? "search" : "memo"} message={props.emptyMessage ?? t("message.no-data")} className="w-full" />
     ) : null;
   const initialLoader = isDisplayPending && showLoader ? <Loader /> : null;
   // Only a query the user typed can be edited or cleared from the error; facet and scope

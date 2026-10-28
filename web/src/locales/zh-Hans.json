@@ -61,7 +61,8 @@
     "signups-closed-description": "此实例已禁用新账号注册。如需访问，请联系管理员。",
     "signups-closed-title": "注册已关闭",
     "sso-signup-tip": "使用以下登录方式即可创建账号。",
-    "welcome-back": "欢迎回来。"
+    "welcome-back": "欢迎回来。",
+    "sign-in-with-passkey": "使用通行密钥登录"
   },
   "calendar": {
     "new-memo-on-day": "在这一天新建备忘录",
@@ -388,7 +389,27 @@
     "parent-load-error": "无法加载原始备忘录。",
     "parent-unavailable": "原始备忘录不可用",
     "parent-unavailable-description": "它可能已被删除，或者您可能已失去访问权限。",
-    "moved": "备忘录已移动"
+    "moved": "备忘录已移动",
+    "export-docx": "导出为 Word (.docx)",
+    "export-markdown": "导出为 Markdown (.md)",
+    "export-docx-failed": "导出备忘录失败。",
+    "batch-export": {
+      "title": "导出备忘录",
+      "tag-heading": "导出 #{{tag}}",
+      "md-zip": "Markdown，每条一个文件 (.zip)",
+      "docx-zip": "Word，每条一个文件 (.zip)",
+      "md-merged": "Markdown，合并为一个文件 (.md)",
+      "docx-merged": "Word，合并为一个文件 (.docx)",
+      "select": "多选导出…",
+      "selected-count": "已选 {{count}} 条",
+      "select-all": "全选",
+      "select-none": "取消全选",
+      "export": "导出",
+      "failed": "导出备忘录失败。",
+      "select-memo": "选择要导出的备忘录",
+      "selected": "已选",
+      "select-this": "选择"
+    }
   },
   "message": {
     "archived-successfully": "归档成功",
@@ -505,7 +526,13 @@
       "theme-description": "立即在当前设备上应用所选主题。",
       "theme": "主题",
       "uploads-privacy-description": "控制上传媒体时提交的隐私敏感信息。",
-      "uploads-privacy-title": "上传与隐私"
+      "uploads-privacy-title": "上传与隐私",
+      "timezone": "时区",
+      "timezone-description": "用于 Word 和 Markdown 导出中的时间。“系统时区”使用当前设备的时区（{{zone}}）。",
+      "timezone-system": "系统时区",
+      "timezone-custom": "自定义时区",
+      "timezone-search": "输入以搜索 IANA 时区，例如 Asia/Shanghai。",
+      "timezone-invalid": "未知的时区。"
     },
     "memo-view": {
       "create": "创建视图",
@@ -893,7 +920,16 @@
       "review-existing": "您的账户中已存在",
       "review-exported": "导出者",
       "review-memos": "文件中的备忘录",
-      "review-new": "将新建"
+      "review-new": "将新建",
+      "docx-title": "导出为 Word",
+      "docx-description": "将你的备忘录下载为一个 Word 文档（.docx），每条备忘录以创建时间和标签作为标题。不包含已归档的备忘录和评论。",
+      "docx-range": "日期范围",
+      "docx-range-detail": "可选。留空则导出全部备忘录。",
+      "docx-start": "开始日期",
+      "docx-end": "结束日期",
+      "docx-label": "下载 Word 文档",
+      "docx-detail": "可用 Word、WPS、Pages 或 LibreOffice 打开的 .docx 文件。",
+      "docx-action": "导出 .docx"
     },
     "spaces": {
       "general": "一般设置",
@@ -975,6 +1011,27 @@
       "you": "您",
       "your-access": "您的访问权限",
       "your-spaces": "您的空间"
+    },
+    "passkey": {
+      "title": "通行密钥",
+      "description": "使用 Face ID、Touch ID、Windows Hello 或安全密钥免密码登录。",
+      "empty": "尚未添加通行密钥。",
+      "add": "添加通行密钥",
+      "name-prompt": "为此通行密钥命名",
+      "added": "已添加通行密钥。",
+      "delete-confirm": "删除通行密钥“{{name}}”？",
+      "created": "创建于",
+      "last-used": "上次使用"
+    },
+    "captcha": {
+      "title": "人机验证（Cloudflare Turnstile）",
+      "description": "在密码登录和注册时要求通过 Turnstile 验证。通行密钥登录不受影响。",
+      "enable": "启用 Turnstile",
+      "site-key": "站点密钥（Site Key）",
+      "secret-key": "私密密钥（Secret Key）",
+      "secret-set": "已保存",
+      "secret-keep": "留空则保留已保存的密钥",
+      "keys-required": "启用 Turnstile 需要填写站点密钥和私密密钥。"
     }
   },
   "tooltip": {
