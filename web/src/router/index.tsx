@@ -27,6 +27,7 @@ const MemoDetail = lazyWithReload(() => import("@/pages/MemoDetail"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
 const PermissionDenied = lazyWithReload(() => import("@/pages/PermissionDenied"));
 const Attachments = lazyWithReload(() => import("@/pages/Attachments"));
+const Vocab = lazyWithReload(() => import("@/pages/Vocab"));
 const Setting = lazyWithReload(() => import("@/pages/Setting"));
 const MemoViews = lazyWithReload(() => import("@/pages/MemoViews"));
 const SignIn = lazyWithReload(() => import("@/pages/SignIn"));
@@ -151,6 +152,7 @@ export const routeConfig: RouteObject[] = [
                     ],
                   },
                   { path: Routes.ATTACHMENTS, element: <Attachments /> },
+                  { path: Routes.VOCAB, element: <Vocab /> },
                   { path: Routes.INBOX, element: <Inboxes /> },
                   { path: Routes.SETTING, element: <Setting /> },
                 ],

@@ -3,6 +3,7 @@ import {
   ArchiveIcon,
   ArrowRightIcon,
   BellIcon,
+  BookAIcon,
   CalendarDaysIcon,
   FileAudioIcon,
   FileTextIcon,
@@ -18,7 +19,7 @@ import {
   Trash2Icon,
   UserRoundIcon,
 } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { MAP_MEMO_FILTER } from "@/components/MapView/useMapMemos";
 import { MemoDetailSidebar } from "@/components/MemoDetailSidebar";
@@ -40,6 +41,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import { useNotifications } from "@/hooks/useUserQueries";
 import { combineCELFilters } from "@/lib/cel-filter";
 import { cn } from "@/lib/utils";
+import { getVocabStats } from "@/lib/vocab";
 import { collectionNavigationPath, ROUTES } from "@/router/routes";
 import { User_Role, UserNotification_Status } from "@/types/proto/api/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -251,6 +253,37 @@ const MemoDetailSidebarContent = () => {
   );
 };
 
+const VocabSidebarContent = () => {
+  const t = useTranslate();
+  const [stats, setStats] = useState({ total: 0, new: 0, learning: 0, review: 0, due: 0 });
+  useEffect(() => {
+    const load = () => {
+      getVocabStats()
+        .then(setStats)
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener("vocab-stats-changed", load);
+    return () => window.removeEventListener("vocab-stats-changed", load);
+  }, []);
+  const rows = [
+    { label: t("vocab.filterDue"), count: stats.due },
+    { label: t("vocab.filterNew"), count: stats.new },
+    { label: t("vocab.filterLearning"), count: stats.learning },
+    { label: t("vocab.filterReview"), count: stats.review },
+  ];
+  return (
+    <SidebarSection label={t("common.vocab")}>
+      {rows.map((row) => (
+        <div key={row.label} className={cn(SIDEBAR_ROW_CLASSES, "pointer-events-none")}>
+          <span className="truncate">{row.label}</span>
+          <span className="ms-auto text-2xs tabular-nums text-muted-foreground/60">{row.count}</span>
+        </div>
+      ))}
+    </SidebarSection>
+  );
+};
+
 const RouteSidebarContent = () => {
   const location = useLocation();
   const kind = getSidebarRouteKind(location.pathname);
@@ -261,6 +294,7 @@ const RouteSidebarContent = () => {
   if (kind === "calendar") return <CollectionSidebarContent context="home" showStatistics={false} />;
   if (kind === "map") return <CollectionSidebarContent context="home" showStatistics={false} scopeFilter={MAP_MEMO_FILTER} />;
   if (kind === "attachments") return <AttachmentsSidebarContent />;
+  if (kind === "vocab") return <VocabSidebarContent />;
   if (kind === "inbox") return <InboxSidebarContent />;
   if (kind === "settings") return <SettingsSidebarContent />;
   if (kind === "memo") return <MemoDetailSidebarContent />;
@@ -273,6 +307,7 @@ const NAV_DESTINATIONS = [
   { kind: "calendar", labelKey: "common.calendar", pathname: ROUTES.CALENDAR, icon: CalendarDaysIcon, signedInOnly: false },
   { kind: "map", labelKey: "common.map", pathname: ROUTES.MAP, icon: MapIcon, signedInOnly: false },
   { kind: "attachments", labelKey: "common.attachments", pathname: ROUTES.ATTACHMENTS, icon: PaperclipIcon, signedInOnly: true },
+  { kind: "vocab", labelKey: "common.vocab", pathname: ROUTES.VOCAB, icon: BookAIcon, signedInOnly: true },
 ] as const;
 
 interface NavPillProps {
@@ -284,6 +319,7 @@ interface NavPillProps {
   active?: boolean;
   expanded?: boolean;
   className?: string;
+  badge?: number;
 }
 
 /**
@@ -296,7 +332,7 @@ interface NavPillProps {
  * page stays a filled square with its tooltip, leaving room for the other actions.
  * Timeline's trailing arrow shares its surface, with a separate click target.
  */
-const NavPill = ({ label, icon: Icon, to, onClick, active = false, expanded = false, className }: NavPillProps) => {
+const NavPill = ({ label, icon: Icon, to, onClick, active = false, expanded = false, className, badge }: NavPillProps) => {
   const { setMobileOpen } = useAppSidebar();
   const props = {
     onClick: () => {
@@ -315,8 +351,13 @@ const NavPill = ({ label, icon: Icon, to, onClick, active = false, expanded = fa
   return (
     <Tooltip disabled={expanded}>
       <TooltipTrigger render={to ? <Link to={to} {...props} /> : <button type="button" {...props} />}>
-        <span className={SIDEBAR_NAV_LEADING_SLOT_CLASSES} aria-hidden="true">
+        <span className={cn(SIDEBAR_NAV_LEADING_SLOT_CLASSES, "relative")} aria-hidden="true">
           <Icon className="size-4 opacity-75" strokeWidth={1.8} />
+          {!!badge && badge > 0 && (
+            <span className="absolute -top-1.5 -end-1.5 min-w-3.5 rounded-full bg-primary px-0.5 text-center text-[9px] leading-3.5 text-primary-foreground">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
         </span>
         {/* The control carries its own aria-label; this text is decoration whether or not it is open. */}
         <span
@@ -350,6 +391,18 @@ const GlobalNavigation = () => {
   // The current page shows its label; anywhere else, Timeline does.
   const expandedKind = destinations.find((destination) => destination.kind === routeKind)?.kind ?? "timeline";
   const navigationPath = (pathname: string) => collectionNavigationPath(pathname, location, currentUser?.username);
+  const [vocabBadge, setVocabBadge] = useState(0);
+  useEffect(() => {
+    if (!currentUser) return;
+    const load = () => {
+      getVocabStats()
+        .then((stats) => setVocabBadge((stats.due || 0) + (stats.new || 0)))
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener("vocab-stats-changed", load);
+    return () => window.removeEventListener("vocab-stats-changed", load);
+  }, [currentUser]);
 
   return (
     <TooltipProvider>
@@ -368,11 +421,12 @@ const GlobalNavigation = () => {
         {destinations.map((destination) => (
           <NavPill
             key={destination.kind}
-            to={navigationPath(destination.pathname)}
+            to={destination.kind === "vocab" ? destination.pathname : navigationPath(destination.pathname)}
             label={t(destination.labelKey)}
             icon={destination.icon}
             active={destination.kind === routeKind}
             expanded={destination.kind === expandedKind}
+            badge={destination.kind === "vocab" ? vocabBadge : undefined}
           />
         ))}
         <NavPill label={t("common.search")} icon={SearchIcon} onClick={() => setQuickFindOpen(true)} className="ms-auto" />

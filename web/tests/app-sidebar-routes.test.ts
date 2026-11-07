@@ -17,6 +17,8 @@ describe("sidebar route content", () => {
     ["/Calendar/2026/08/02/", "calendar"],
     ["/attachments", "attachments"],
     ["/Attachments/", "attachments"],
+    ["/vocab", "vocab"],
+    ["/Vocab/", "vocab"],
     ["/inbox", "inbox"],
     ["/Inbox/", "inbox"],
     ["/setting", "settings"],
@@ -68,6 +70,7 @@ describe("sidebar route content", () => {
 
   it.each([
     "/inbox",
+    "/vocab",
     "/setting",
     "/views",
     "/about",

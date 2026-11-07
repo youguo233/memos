@@ -102,6 +102,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		return nil, errors.Wrap(err, "failed to create API handler")
 	}
 	apiService.RegisterPasskeyRoutes(mux)
+	apiService.RegisterVocabRoutes(mux)
 	frontendService := frontend.NewFrontendService(profile, store)
 	frontendService.Serve(ctx, mux, apiHandler)
 	fileServerService := fileserver.NewFileServerService(s.Profile, s.Store, s.Secret)

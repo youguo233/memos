@@ -23,6 +23,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.2.0
 	github.com/moby/moby/api v1.55.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
+	github.com/open-spaced-repetition/go-fsrs/v3 v3.3.1
 	github.com/openai/openai-go/v3 v3.51.0
 	github.com/pion/opus v0.1.0
 	github.com/pkg/errors v0.9.1
