@@ -1,7 +1,7 @@
 import { getRequestToken } from "@/connect";
 
 /** Runtime marker that survives minification. */
-export const VOCAB_MARKER = "mbe-vocab-v8";
+export const VOCAB_MARKER = "mbe-vocab-v9";
 
 export type VocabState = 0 | 1 | 2 | 3;
 
@@ -233,6 +233,11 @@ function youdaoURL(term: string, type: 1 | 2): string {
   return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(term.trim())}&type=${type}`;
 }
 
+/** Youdao dictvoice: type=1 is British (e.g. leverage /ˈliːvərɪdʒ/), type=2 is American. */
+function youdaoType(accent: VocabAccent): 1 | 2 {
+  return accent === "uk" ? 1 : 2;
+}
+
 let currentAudio: HTMLAudioElement | undefined;
 
 function stopPlayback() {
@@ -286,8 +291,8 @@ export async function playPronunciation(term: string, accent: VocabAccent = getV
   const trimmed = term.trim();
   if (!trimmed) return;
   stopPlayback();
-  const primary: 1 | 2 = accent === "uk" ? 2 : 1;
-  const secondary: 1 | 2 = accent === "uk" ? 1 : 2;
+  const primary = youdaoType(accent);
+  const secondary = youdaoType(accent === "uk" ? "us" : "uk");
   const sources = [audioUrl, youdaoURL(trimmed, primary), youdaoURL(trimmed, secondary)].filter((item): item is string => Boolean(item));
   for (const src of sources) {
     try {
