@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { isTypingTarget } from "@/lib/hotkeys";
 import { getUserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,103 @@ const emptySettingsForm = () => ({
   prompt: "",
   apiKey: "",
 });
+
+type FormattedLineKind = "common" | "other" | "en" | "zh" | "heading" | "bullet" | "plain";
+
+const formattedLinePattern = /^(【常用】|【也作】|EN:|中:|【[^】]+】|[·•\-—]\s)/;
+
+function VocabFormattedText({ text, variant }: { text: string; variant?: "definition" | "example" | "notes" }) {
+  const trimmedText = text.trim();
+  if (!trimmedText) return null;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const hasMarkers = lines.some((line) => formattedLinePattern.test(line.trim()));
+  if (!hasMarkers) {
+    if (variant === "example") {
+      return <p className="text-sm text-muted-foreground italic whitespace-pre-wrap leading-6">{text}</p>;
+    }
+    return <p className={cn("whitespace-pre-wrap", variant === "notes" ? "text-sm leading-6" : "text-base leading-7")}>{text}</p>;
+  }
+
+  let prev: FormattedLineKind | "" = "";
+  return (
+    <div className="flex flex-col gap-1">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          prev = "";
+          return <div key={index} className="h-1.5" />;
+        }
+        const common = trimmed.match(/^【常用】(.*)$/);
+        if (common) {
+          prev = "common";
+          return (
+            <div key={index} className="flex items-start gap-2 mt-1 first:mt-0">
+              <span className="shrink-0 mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                常用
+              </span>
+              <span className="font-medium leading-7">{common[1].trim()}</span>
+            </div>
+          );
+        }
+        const other = trimmed.match(/^【也作】(.*)$/);
+        if (other) {
+          prev = "other";
+          return (
+            <div key={index} className="flex items-start gap-2 mt-2">
+              <span className="shrink-0 mt-0.5 text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">也作</span>
+              <span className="text-muted-foreground leading-7">{other[1].trim()}</span>
+            </div>
+          );
+        }
+        const en = trimmed.match(/^EN:\s*(.*)$/i);
+        if (en) {
+          prev = "en";
+          return (
+            <p key={index} className="text-sm italic leading-6 mt-2 first:mt-0">
+              “{en[1]}”
+            </p>
+          );
+        }
+        const zh = trimmed.match(/^中:\s*(.*)$/);
+        if (zh) {
+          prev = "zh";
+          return (
+            <p key={index} className="text-sm text-muted-foreground leading-6">
+              {zh[1]}
+            </p>
+          );
+        }
+        const heading = trimmed.match(/^【([^】]+)】$/);
+        if (heading) {
+          prev = "heading";
+          return (
+            <div key={index} className="text-xs font-semibold text-muted-foreground mt-3 first:mt-0">
+              {heading[1]}
+            </div>
+          );
+        }
+        const bullet = trimmed.match(/^[·•\-—]\s*(.*)$/);
+        if (bullet) {
+          prev = "bullet";
+          return (
+            <div key={index} className="flex gap-2 text-sm leading-6">
+              <span className="text-muted-foreground">·</span>
+              <span>{bullet[1]}</span>
+            </div>
+          );
+        }
+        const continuation =
+          prev === "common" ? "text-base leading-7" : prev === "other" ? "text-sm text-muted-foreground leading-6" : "text-sm leading-6";
+        prev = "plain";
+        return (
+          <p key={index} className={continuation}>
+            {trimmed}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 const Vocab = () => {
   const t = useTranslate();
@@ -164,7 +262,7 @@ const Vocab = () => {
   useEffect(() => {
     if (tab !== "review" || !current) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(event.target)) return;
       if (!revealed && (event.key === " " || event.key === "Enter")) {
         event.preventDefault();
         setRevealed(true);
@@ -179,6 +277,36 @@ const Vocab = () => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [current, handleReview, revealed, tab]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.isComposing || event.keyCode === 229) return;
+      if (isTypingTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      if (key === "r") {
+        event.preventDefault();
+        setTab("review");
+        return;
+      }
+      if (key === "v") {
+        event.preventDefault();
+        setTab("library");
+        return;
+      }
+      if (key === "a") {
+        event.preventDefault();
+        setTab("add");
+        return;
+      }
+      if (key === "s") {
+        event.preventDefault();
+        setTab("settings");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const saveCard = async () => {
     if (!form.term.trim() || !form.definition.trim()) {
@@ -380,6 +508,7 @@ const Vocab = () => {
                 <TabsTrigger value="settings">{t("vocab.settings")}</TabsTrigger>
               </TabsList>
             </Tabs>
+            <p className="text-xs text-muted-foreground">{t("vocab.tabShortcutHint")}</p>
           </div>
 
           {tab === "review" && (
@@ -396,9 +525,9 @@ const Vocab = () => {
                     {current.phonetic && <div className="text-sm text-muted-foreground">{current.phonetic}</div>}
                     {revealed ? (
                       <>
-                        <p className="text-base leading-7 whitespace-pre-wrap">{current.definition}</p>
-                        {current.example && <p className="text-sm text-muted-foreground italic whitespace-pre-wrap">“{current.example}”</p>}
-                        {current.notes && <p className="text-sm whitespace-pre-wrap">{current.notes}</p>}
+                        <VocabFormattedText text={current.definition} variant="definition" />
+                        {current.example && <VocabFormattedText text={current.example} variant="example" />}
+                        {current.notes && <VocabFormattedText text={current.notes} variant="notes" />}
                         {current.tags?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {current.tags.map((tag) => (
@@ -538,10 +667,23 @@ const Vocab = () => {
             <div className="w-full p-4 sm:p-6 flex flex-col gap-3">
               <label className="text-sm font-medium">{t("vocab.term")}</label>
               <div className="flex gap-2">
-                <Input value={form.term} onChange={(event) => setForm((prev) => ({ ...prev, term: event.target.value }))} />
+                <Input
+                  value={form.term}
+                  onChange={(event) => setForm((prev) => ({ ...prev, term: event.target.value }))}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                    event.preventDefault();
+                    if (!lookingUp) void lookup();
+                  }}
+                />
                 <PronounceButton term={form.term ?? ""} audioUrl={lookupAudioUrl} />
                 <Button variant="outline" disabled={lookingUp} onClick={() => void lookup()}>
-                  {settings?.enabled && settings.configured ? t("vocab.lookupLLM") : t("vocab.lookup")}
+                  {lookingUp
+                    ? t("vocab.lookupInProgress")
+                    : settings?.enabled && settings.configured
+                      ? t("vocab.lookupLLM")
+                      : t("vocab.lookup")}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">{t("vocab.lookupHint")}</p>

@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MemoEditor } from "@/components/MemoEditor";
 import { deriveDefaultCreateTimeFromFilters } from "@/components/MemoEditor/edit/utils/deriveDefaultCreateTime";
 import MemoView from "@/components/MemoView";
@@ -11,6 +12,8 @@ import { useSpaceContext } from "@/contexts/SpaceContext";
 import { useMemoFilters, useMemoSorting } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useMemoSuggestions } from "@/hooks/useMemoSuggestions";
+import { isTypingTarget } from "@/lib/hotkeys";
+import { ROUTES } from "@/router/routes";
 import { State } from "@/types/proto/api/common_pb";
 import { Memo } from "@/types/proto/api/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -19,6 +22,20 @@ const Home = () => {
   const user = useCurrentUser();
   const suggestions = useMemoSuggestions();
   const t = useTranslate();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.isComposing || event.keyCode === 229) return;
+      if (isTypingTarget(event.target)) return;
+      if (event.key.toLowerCase() !== "c") return;
+      event.preventDefault();
+      navigate(ROUTES.VOCAB);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
   const { isUserSettingsInitialized } = useAuth();
   const { claimHomeAutoFocus } = useGlobalMemoEditor();
   const { filters } = useMemoFilterContext();

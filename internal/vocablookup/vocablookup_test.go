@@ -12,14 +12,15 @@ import (
 
 func TestNormalizeChatCompletionsURL(t *testing.T) {
 	cases := map[string]string{
-		"https://api.deepseek.com":                          "https://api.deepseek.com/v1/chat/completions",
-		"https://api.deepseek.com/":                         "https://api.deepseek.com/v1/chat/completions",
-		"https://api.deepseek.com/v1":                       "https://api.deepseek.com/v1/chat/completions",
-		"https://api.deepseek.com/v1/":                      "https://api.deepseek.com/v1/chat/completions",
-		"https://api.openai.com/v1/chat/completions":        "https://api.openai.com/v1/chat/completions",
-		"https://api.openai.com/v1/chat/completions/":       "https://api.openai.com/v1/chat/completions",
-		"https://dashscope.aliyuncs.com/compatible-mode/v1": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-		"http://127.0.0.1:11434":                            "http://127.0.0.1:11434/v1/chat/completions",
+		"https://api.deepseek.com":                                         "https://api.deepseek.com/v1/chat/completions",
+		"https://api.deepseek.com/":                                        "https://api.deepseek.com/v1/chat/completions",
+		"https://api.deepseek.com/v1":                                      "https://api.deepseek.com/v1/chat/completions",
+		"https://api.deepseek.com/v1/":                                     "https://api.deepseek.com/v1/chat/completions",
+		"https://api.openai.com/v1/chat/completions":                       "https://api.openai.com/v1/chat/completions",
+		"https://api.openai.com/v1/chat/completions/":                      "https://api.openai.com/v1/chat/completions",
+		"https://dashscope.aliyuncs.com/compatible-mode/v1":                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+		"https://llm-demo.cn-beijing.maas.aliyuncs.com/compatible-mode/v1": "https://llm-demo.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
+		"http://127.0.0.1:11434":                                           "http://127.0.0.1:11434/v1/chat/completions",
 	}
 	for raw, want := range cases {
 		got, err := NormalizeChatCompletionsURL(raw)
@@ -126,3 +127,24 @@ func TestLookupLLMErrorIsRedacted(t *testing.T) {
 	require.NotContains(t, err.Error(), "secret-key-value")
 	require.Contains(t, err.Error(), "****")
 }
+
+func TestShouldDisableThinking(t *testing.T) {
+	require.True(t, shouldDisableThinking("https://llm-demo.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions"))
+	require.True(t, shouldDisableThinking("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
+	require.False(t, shouldDisableThinking("https://api.deepseek.com/v1/chat/completions"))
+	require.False(t, shouldDisableThinking("http://127.0.0.1:11434/v1/chat/completions"))
+}
+
+func TestTimeoutOrRequestError(t *testing.T) {
+	err := timeoutOrRequestError(context.DeadlineExceeded, "secret-key")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "timed out")
+	require.NotContains(t, err.Error(), "secret-key")
+
+	err = timeoutOrRequestError(assertError("Post \"https://example.com\": context deadline exceeded"), "secret-key")
+	require.Contains(t, err.Error(), "timed out")
+}
+
+type assertError string
+
+func (e assertError) Error() string { return string(e) }

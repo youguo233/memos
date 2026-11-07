@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,16 +14,37 @@ import (
 	"time"
 )
 
-const DefaultPrompt = `You help a Chinese graduate student build vocabulary cards while reading English academic papers.
-The user message is an English word or phrase (it may be a technical term).
-Reply with JSON only, no markdown, using these keys:
-- phonetic: IPA transcription, American English preferred, like /.../
-- definition: a concise English definition, then a Chinese translation, separated by a newline
-- example: one or two natural example sentences (academic register when it fits), one sentence per line
-- notes: short Chinese notes on collocations, usage, register, and confusions that matter when reading papers
-Keep the content practical and accurate. Do not invent an unrelated meaning.`
+const DefaultPrompt = `You help a Chinese graduate student quickly understand and remember an English word or phrase from academic papers.
 
-var httpClient = &http.Client{Timeout: 45 * time.Second}
+Reply with JSON only, no markdown fences, using these keys:
+- phonetic: American IPA, like /ɪˈnɔːɡjəreɪt/
+- definition: senses ranked by how often the learner will meet them when reading papers, at most 4. Format exactly:
+【常用】[pos] short English gloss
+Chinese gloss
+【也作】[pos] short English gloss
+Chinese gloss
+Use 【常用】 for the 1-2 senses they should learn first. Use 【也作】 for other useful senses. Each English gloss is one short clause.
+- example: two sentences for the most common sense(s), academic when it fits. Format exactly:
+EN: English sentence.
+中: Natural Chinese translation.
+EN: English sentence.
+中: Natural Chinese translation.
+- notes: Chinese only, easy to scan, to help them master the word quickly. Use these headers and "· " bullets; omit an empty section:
+【用法】
+· when and why writers choose this word
+【搭配】
+· key collocations, keep the English phrase and add a brief Chinese note
+【易混】
+· contrast with one close synonym if useful
+【记忆】
+· one short memory hook
+
+Be accurate and concise. Do not invent unrelated meanings.`
+
+// LLMTimeout is how long a model lookup may take, including slower compatible APIs.
+const LLMTimeout = 90 * time.Second
+
+var httpClient = &http.Client{Timeout: LLMTimeout}
 
 // Result is the filled-in card content from a lookup.
 type Result struct {
@@ -119,6 +141,20 @@ func redact(s, secret string) string {
 	return s
 }
 
+func shouldDisableThinking(endpoint string) bool {
+	host := strings.ToLower(endpoint)
+	return strings.Contains(host, "aliyuncs.com") || strings.Contains(host, "dashscope")
+}
+
+func timeoutOrRequestError(err error, secret string) error {
+	msg := redact(err.Error(), secret)
+	lower := strings.ToLower(msg)
+	if errors.Is(err, context.DeadlineExceeded) || strings.Contains(lower, "deadline exceeded") || strings.Contains(lower, "timeout") {
+		return fmt.Errorf("the model request timed out after %s; try again, or switch to a faster model", LLMTimeout)
+	}
+	return fmt.Errorf("the model request failed: %s", msg)
+}
+
 func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error) {
 	endpoint, err := NormalizeChatCompletionsURL(cfg.BaseURL)
 	if err != nil {
@@ -128,14 +164,20 @@ func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error)
 	if prompt == "" {
 		prompt = DefaultPrompt
 	}
-	payload, err := json.Marshal(map[string]any{
+	payloadBody := map[string]any{
 		"model":       cfg.Model,
 		"temperature": 0.3,
+		"max_tokens":  1400,
 		"messages": []map[string]string{
 			{"role": "system", "content": prompt},
 			{"role": "user", "content": term},
 		},
-	})
+	}
+	if shouldDisableThinking(endpoint) {
+		payloadBody["enable_thinking"] = false
+		payloadBody["chat_template_kwargs"] = map[string]any{"enable_thinking": false}
+	}
+	payload, err := json.Marshal(payloadBody)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +190,7 @@ func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("the model request failed: %s", redact(err.Error(), cfg.APIKey))
+		return nil, timeoutOrRequestError(err, cfg.APIKey)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))

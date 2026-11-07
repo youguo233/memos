@@ -17,7 +17,7 @@ import (
 	"github.com/usememos/memos/store"
 )
 
-const vocabMarker = "mbe-vocab-v2"
+const vocabMarker = "mbe-vocab-v3"
 
 type vocabCardJSON struct {
 	UID          string                   `json:"uid"`
@@ -658,7 +658,7 @@ func (s *APIService) handleVocabLookup(w http.ResponseWriter, r *http.Request) {
 	var llmErr error
 	useLLM := st != nil && st.Enabled && strings.TrimSpace(st.APIKey) != "" && strings.TrimSpace(st.BaseURL) != "" && strings.TrimSpace(st.Model) != ""
 	if useLLM {
-		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), vocablookup.LLMTimeout)
 		defer cancel()
 		llmResult, llmErr = vocablookup.LookupLLM(ctx, vocablookup.LLMConfig{
 			BaseURL: st.BaseURL,
