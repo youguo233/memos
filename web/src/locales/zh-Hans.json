@@ -1232,7 +1232,7 @@
     "exportCsv": "导出 CSV",
     "imported": "已导入 {{count}} 张卡片",
     "shortcutHint": "空格或回车显示释义。数字键 1–4 分别是：重来、困难、一般、简单。",
-    "tabShortcutHint": "快捷键：R 复习，V 词库，A 添加，S 设置。",
+    "tabShortcutHint": "快捷键：R 复习，V 词库，A 添加，S 设置，H 主页。",
     "stateNew": "新词",
     "stateLearning": "学习中",
     "stateReview": "复习中",

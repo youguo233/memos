@@ -122,7 +122,7 @@ func (s *Service) renderDocx(ctx context.Context, title string, memos []*store.M
 		entries := make([]entry, 0, len(memos))
 		for _, memo := range memos {
 			sec := section(memo, loc)
-			entries = append(entries, entry{Title: sec.Title, Subtitle: sec.Subtitle, Markdown: s.memoImages(ctx, memo)})
+			entries = append(entries, entry{Title: sec.Title, Subtitle: sec.Subtitle, Markdown: stripTrailingTagLines(s.memoImages(ctx, memo))})
 		}
 		md := buildMarkdown(entries)
 		if len(entries) == 0 {
@@ -162,14 +162,16 @@ func section(memo *store.Memo, loc *time.Location) docx.Section {
 	if tags := memo.Payload.GetTags(); len(tags) > 0 {
 		sub = append(sub, "#"+strings.Join(tags, " #"))
 	}
-	sub = append(sub, string(memo.Visibility))
+	if memo.Visibility != "" && memo.Visibility != store.SpaceAudience {
+		sub = append(sub, string(memo.Visibility))
+	}
 	if memo.UpdatedTs != memo.CreatedTs {
 		sub = append(sub, "updated "+time.Unix(memo.UpdatedTs, 0).In(loc).Format("2006-01-02 15:04"))
 	}
 	return docx.Section{
 		Title:    time.Unix(memo.CreatedTs, 0).In(loc).Format("2006-01-02 15:04 MST"),
 		Subtitle: strings.Join(sub, " · "),
-		Markdown: memo.Content,
+		Markdown: stripTrailingTagLines(memo.Content),
 	}
 }
 

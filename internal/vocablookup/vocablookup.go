@@ -84,54 +84,56 @@ func NormalizeChatCompletionsURL(raw string) (string, error) {
 	return u.String(), nil
 }
 
-func ParseLLMVocabJSON(content string) (*Result, error) {
-	content = strings.TrimSpace(content)
-	if i := strings.Index(content, "{"); i >= 0 {
-		if j := strings.LastIndex(content, "}"); j > i {
-			content = content[i : j+1]
-		}
-	}
-	var raw struct {
-		Phonetic   string `json:"phonetic"`
-		Definition string `json:"definition"`
-		Example    string `json:"example"`
-		Notes      string `json:"notes"`
-	}
-	if err := json.Unmarshal([]byte(content), &raw); err != nil {
-		return nil, fmt.Errorf("the model response was not valid JSON")
-	}
-	out := &Result{
-		Phonetic:   strings.TrimSpace(raw.Phonetic),
-		Definition: strings.TrimSpace(raw.Definition),
-		Example:    strings.TrimSpace(raw.Example),
-		Notes:      strings.TrimSpace(raw.Notes),
-		Source:     "llm",
-	}
-	if out.Phonetic == "" && out.Definition == "" && out.Notes == "" {
-		return nil, fmt.Errorf("the model response was missing vocabulary fields")
-	}
-	return out, nil
-}
-
 type flexContent struct{ Text string }
 
 func (c *flexContent) UnmarshalJSON(b []byte) error {
 	b = bytes.TrimSpace(b)
-	if len(b) > 0 && b[0] == '"' {
+	if len(b) == 0 || string(b) == "null" {
+		c.Text = ""
+		return nil
+	}
+	switch b[0] {
+	case '"':
 		return json.Unmarshal(b, &c.Text)
+	case '{':
+		c.Text = string(b)
+		return nil
+	case '[':
+		var parts []struct {
+			Type     string `json:"type"`
+			Text     string `json:"text"`
+			Thinking string `json:"thinking"`
+			Content  string `json:"content"`
+		}
+		if err := json.Unmarshal(b, &parts); err != nil {
+			return err
+		}
+		var texts []string
+		var thinking []string
+		for _, part := range parts {
+			kind := strings.ToLower(part.Type)
+			if kind == "thinking" || kind == "reasoning" || kind == "think" {
+				if part.Thinking != "" {
+					thinking = append(thinking, part.Thinking)
+				} else if part.Text != "" {
+					thinking = append(thinking, part.Text)
+				}
+				continue
+			}
+			if part.Text != "" {
+				texts = append(texts, part.Text)
+			} else if part.Content != "" {
+				texts = append(texts, part.Content)
+			}
+		}
+		c.Text = strings.Join(texts, "")
+		if strings.TrimSpace(c.Text) == "" {
+			c.Text = strings.Join(thinking, "")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported content type")
 	}
-	var parts []struct {
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal(b, &parts); err != nil {
-		return err
-	}
-	var bld strings.Builder
-	for _, part := range parts {
-		bld.WriteString(part.Text)
-	}
-	c.Text = bld.String()
-	return nil
 }
 
 func redact(s, secret string) string {
@@ -164,18 +166,23 @@ func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error)
 	if prompt == "" {
 		prompt = DefaultPrompt
 	}
+	aliyun := shouldDisableThinking(endpoint)
+	if aliyun {
+		prompt = ensureJSONInstruction(prompt)
+	}
 	payloadBody := map[string]any{
 		"model":       cfg.Model,
 		"temperature": 0.3,
-		"max_tokens":  1400,
+		"max_tokens":  4096,
 		"messages": []map[string]string{
 			{"role": "system", "content": prompt},
 			{"role": "user", "content": term},
 		},
 	}
-	if shouldDisableThinking(endpoint) {
+	if aliyun {
 		payloadBody["enable_thinking"] = false
 		payloadBody["chat_template_kwargs"] = map[string]any{"enable_thinking": false}
+		payloadBody["response_format"] = map[string]any{"type": "json_object"}
 	}
 	payload, err := json.Marshal(payloadBody)
 	if err != nil {
@@ -202,8 +209,10 @@ func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error)
 			Message string `json:"message"`
 		} `json:"error"`
 		Choices []struct {
-			Message struct {
-				Content flexContent `json:"content"`
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				Content          flexContent `json:"content"`
+				ReasoningContent string      `json:"reasoning_content"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
@@ -219,10 +228,21 @@ func LookupLLM(ctx context.Context, cfg LLMConfig, term string) (*Result, error)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("the model lookup failed (%d)", resp.StatusCode)
 	}
-	if len(parsed.Choices) == 0 || strings.TrimSpace(parsed.Choices[0].Message.Content.Text) == "" {
+	if len(parsed.Choices) == 0 {
 		return nil, fmt.Errorf("the model returned an empty response")
 	}
-	return ParseLLMVocabJSON(parsed.Choices[0].Message.Content.Text)
+	text := strings.TrimSpace(parsed.Choices[0].Message.Content.Text)
+	if text == "" {
+		text = strings.TrimSpace(parsed.Choices[0].Message.ReasoningContent)
+	}
+	if text == "" {
+		return nil, fmt.Errorf("the model returned an empty response")
+	}
+	out, err := ParseLLMVocabJSON(text)
+	if err != nil && strings.EqualFold(parsed.Choices[0].FinishReason, "length") {
+		return nil, fmt.Errorf("the model response was cut off before it finished; try again")
+	}
+	return out, err
 }
 
 func ParseDictionaryJSON(data []byte) (*Result, error) {

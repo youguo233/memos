@@ -1,6 +1,7 @@
 package memodocx
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -11,7 +12,7 @@ const metaMarker = "\u2063"
 // entry is one memo rendered as a document section.
 type entry struct {
 	Title    string // heading, e.g. the created time
-	Subtitle string // tags · visibility · updated
+	Subtitle string // tags · visibility (SPACE omitted) · updated
 	Markdown string // memo body (already image-rewritten)
 }
 
@@ -80,4 +81,22 @@ func demoteHeadings(md string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+var tagOnlyLine = regexp.MustCompile(`^(#[^\s#]+)(\s+#[^\s#]+)*$`)
+
+// stripTrailingTagLines removes blank lines and tag-only lines at the end of a
+// memo body so Word/Markdown exports do not repeat tags already shown in the subtitle.
+func stripTrailingTagLines(content string) string {
+	lines := strings.Split(content, "\n")
+	end := len(lines)
+	for end > 0 {
+		trimmed := strings.TrimSpace(lines[end-1])
+		if trimmed == "" || tagOnlyLine.MatchString(trimmed) {
+			end--
+			continue
+		}
+		break
+	}
+	return strings.TrimRight(strings.Join(lines[:end], "\n"), "\n")
 }

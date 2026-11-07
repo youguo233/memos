@@ -1232,7 +1232,7 @@
     "exportCsv": "Export CSV",
     "imported": "Imported {{count}} cards",
     "shortcutHint": "Space or Enter shows the answer. Keys 1–4 rate it: Again, Hard, Good, Easy.",
-    "tabShortcutHint": "Shortcuts: R review, V library, A add, S settings.",
+    "tabShortcutHint": "Shortcuts: R review, V library, A add, S settings, H home.",
     "stateNew": "New",
     "stateLearning": "Learning",
     "stateReview": "Review",

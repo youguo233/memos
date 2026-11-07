@@ -8,6 +8,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/store"
 )
 
 func TestBuildMarkdown(t *testing.T) {
@@ -115,5 +119,48 @@ func TestSafeAndUniqueName(t *testing.T) {
 	used := map[string]bool{}
 	if a, b := uniqueName(used, "x", ".md"), uniqueName(used, "x", ".md"); a != "x.md" || b != "x-2.md" {
 		t.Fatalf("uniqueName = %q %q", a, b)
+	}
+}
+
+func TestStripTrailingTagLines(t *testing.T) {
+	got := stripTrailingTagLines("现象\n处理说明。\n\n#调试日志\n")
+	if got != "现象\n处理说明。" {
+		t.Fatalf("got %q", got)
+	}
+	got = stripTrailingTagLines("正文\n\n#foo #bar\n")
+	if got != "正文" {
+		t.Fatalf("got %q", got)
+	}
+	got = stripTrailingTagLines("# 标题\n\n正文")
+	if got != "# 标题\n\n正文" {
+		t.Fatalf("should keep headings, got %q", got)
+	}
+}
+
+func TestSectionOmitsSpaceAndTrailingTags(t *testing.T) {
+	memo := &store.Memo{
+		Content:    "现象\n处理说明。\n\n#调试日志\n",
+		Visibility: store.SpaceAudience,
+		CreatedTs:  1730800000,
+		UpdatedTs:  1730800200,
+		Payload:    &storepb.MemoPayload{Tags: []string{"调试日志"}},
+	}
+	sec := section(memo, time.UTC)
+	if strings.Contains(sec.Subtitle, "SPACE") {
+		t.Fatalf("subtitle should omit SPACE: %q", sec.Subtitle)
+	}
+	if !strings.Contains(sec.Subtitle, "#调试日志") {
+		t.Fatalf("subtitle should keep tags: %q", sec.Subtitle)
+	}
+	if strings.Contains(sec.Markdown, "#调试日志") {
+		t.Fatalf("body should drop trailing tags: %q", sec.Markdown)
+	}
+	if !strings.Contains(sec.Markdown, "处理说明。") {
+		t.Fatalf("body should keep content: %q", sec.Markdown)
+	}
+
+	private := &store.Memo{Visibility: store.Private, CreatedTs: 1, UpdatedTs: 1}
+	if sub := section(private, time.UTC).Subtitle; sub != "PRIVATE" {
+		t.Fatalf("PRIVATE should still appear, got %q", sub)
 	}
 }

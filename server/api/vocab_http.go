@@ -17,7 +17,7 @@ import (
 	"github.com/usememos/memos/store"
 )
 
-const vocabMarker = "mbe-vocab-v3"
+const vocabMarker = "mbe-vocab-v4"
 
 type vocabCardJSON struct {
 	UID          string                   `json:"uid"`

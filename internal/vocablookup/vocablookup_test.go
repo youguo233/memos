@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -148,3 +149,94 @@ func TestTimeoutOrRequestError(t *testing.T) {
 type assertError string
 
 func (e assertError) Error() string { return string(e) }
+
+func TestParseLLMVocabJSONThinkTags(t *testing.T) {
+	raw, err := ParseLLMVocabJSON("<think>\nI will output {\"phonetic\":\"/no/\"}\n</think>\n{\"phonetic\":\"/yes/\",\"definition\":\"d\",\"example\":\"e\",\"notes\":\"n\"}")
+	require.NoError(t, err)
+	require.Equal(t, "/yes/", raw.Phonetic)
+}
+
+func TestParseLLMVocabJSONRawNewlines(t *testing.T) {
+	raw, err := ParseLLMVocabJSON("{\n  \"phonetic\": \"/test/\",\n  \"definition\": \"【常用】[verb] begin\n开始\",\n  \"example\": \"EN: Hello.\n中: 你好。\",\n  \"notes\": \"【用法】\n· formal\"\n}")
+	require.NoError(t, err)
+	require.Equal(t, "/test/", raw.Phonetic)
+	require.Contains(t, raw.Definition, "开始")
+	require.Contains(t, raw.Example, "你好")
+	require.Contains(t, raw.Notes, "formal")
+}
+
+func TestParseLLMVocabJSONStructured(t *testing.T) {
+	raw, err := ParseLLMVocabJSON(`{
+		"phonetic": "/test/",
+		"definition": [
+			{"pos": "verb", "en": "begin", "zh": "开始", "common": true},
+			{"pos": "verb", "en": "initiate", "zh": "开创"}
+		],
+		"example": [
+			{"en": "They inaugurated the lab.", "zh": "他们为实验室举行了落成典礼。"}
+		],
+		"notes": {"usage": "偏正式", "memory": "in + augur"}
+	}`)
+	require.NoError(t, err)
+	require.Contains(t, raw.Definition, "【常用】")
+	require.Contains(t, raw.Definition, "开始")
+	require.Contains(t, raw.Definition, "【也作】")
+	require.Contains(t, raw.Example, "EN: They inaugurated the lab.")
+	require.Contains(t, raw.Example, "中: 他们为实验室举行了落成典礼。")
+	require.Contains(t, raw.Notes, "【用法】")
+	require.Contains(t, raw.Notes, "偏正式")
+	require.Contains(t, raw.Notes, "【记忆】")
+}
+
+func TestParseLLMVocabJSONTrailingComma(t *testing.T) {
+	raw, err := ParseLLMVocabJSON(`{"phonetic":"/t/","definition":"d","example":"e","notes":"n",}`)
+	require.NoError(t, err)
+	require.Equal(t, "/t/", raw.Phonetic)
+}
+
+func TestParseLLMVocabJSONAlternateKeys(t *testing.T) {
+	raw, err := ParseLLMVocabJSON(`{"ipa":"/t/","definitions":"d","examples":"e","note":"n"}`)
+	require.NoError(t, err)
+	require.Equal(t, "/t/", raw.Phonetic)
+	require.Equal(t, "d", raw.Definition)
+	require.Equal(t, "e", raw.Example)
+	require.Equal(t, "n", raw.Notes)
+}
+
+func TestLookupLLMNestedObjectContent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":{"phonetic":"/x/","definition":"d","example":"e","notes":"n"}}}]}`))
+	}))
+	defer srv.Close()
+	got, err := LookupLLM(context.Background(), LLMConfig{BaseURL: srv.URL, APIKey: "k", Model: "m"}, "hello")
+	require.NoError(t, err)
+	require.Equal(t, "/x/", got.Phonetic)
+	require.Equal(t, "d", got.Definition)
+}
+
+func TestLookupLLMReasoningContent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","reasoning_content":"{\"phonetic\":\"/x/\",\"definition\":\"d\",\"example\":\"e\",\"notes\":\"n\"}"}}]}`))
+	}))
+	defer srv.Close()
+	got, err := LookupLLM(context.Background(), LLMConfig{BaseURL: srv.URL, APIKey: "k", Model: "m"}, "hello")
+	require.NoError(t, err)
+	require.Equal(t, "/x/", got.Phonetic)
+}
+
+func TestLookupLLMTruncatedJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"length","message":{"content":"{\"phonetic\":\"/x/\",\"definition\":\"partial"}}]}`))
+	}))
+	defer srv.Close()
+	_, err := LookupLLM(context.Background(), LLMConfig{BaseURL: srv.URL, APIKey: "k", Model: "m"}, "hello")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cut off")
+}
+
+func TestEnsureJSONInstruction(t *testing.T) {
+	require.Equal(t, "Reply with JSON only", ensureJSONInstruction("Reply with JSON only"))
+	got := ensureJSONInstruction("Explain the word.")
+	require.Contains(t, strings.ToLower(got), "json")
+	require.Contains(t, got, "Explain the word.")
+}

@@ -1,6 +1,7 @@
 import { BookAIcon, DownloadIcon, PencilIcon, Trash2Icon, UploadIcon, Volume2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +35,7 @@ import {
   VocabSettings,
   VocabStats,
 } from "@/lib/vocab";
+import { ROUTES } from "@/router/routes";
 import { useTranslate } from "@/utils/i18n";
 
 type Tab = "review" | "library" | "add" | "settings";
@@ -154,6 +156,7 @@ function VocabFormattedText({ text, variant }: { text: string; variant?: "defini
 
 const Vocab = () => {
   const t = useTranslate();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("review");
   const [stats, setStats] = useState<VocabStats>({ total: 0, new: 0, learning: 0, review: 0, due: 0 });
   const [session, setSession] = useState<VocabCard[]>([]);
@@ -302,11 +305,16 @@ const Vocab = () => {
       if (key === "s") {
         event.preventDefault();
         setTab("settings");
+        return;
+      }
+      if (key === "h") {
+        event.preventDefault();
+        navigate(ROUTES.HOME);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [navigate]);
 
   const saveCard = async () => {
     if (!form.term.trim() || !form.definition.trim()) {
