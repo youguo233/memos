@@ -14,18 +14,12 @@ behavior; a design document does not have to.
 
 ## Index
 
-Drafts, merged but not yet released:
-
-- [User usage limits](user-usage-limits.md)
-
-Drafts, implemented but not yet merged:
-
-- [Memo attachment and image filters](memo-attachment-filters.md)
-
 Implemented and frozen:
 
 - [API abuse controls](api-abuse-controls.md)
-- [Configuration provisioning](configuration-provisioning.md), moved here from `docs/configuration-provisioning.md` after implementation
+- [Declarative configuration](declarative-configuration.md)
+- [Memo attachment and image filters](memo-attachment-filters.md)
 - [Memos Export Format](memos-export-format.md), including the schemas under `memo-export/1.0/`
 - [Multi-Spaces](multi-spaces.md)
 - [Unique email](unique-email.md)
+- [User usage limits](user-usage-limits.md)

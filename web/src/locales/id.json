@@ -138,7 +138,24 @@
     "resize-sidebar": "Ubah ukuran sidebar",
     "sign-in-to-memos": "Masuk ke Memos",
     "unlink": "Putuskan tautan",
-    "view-all": "Lihat semua"
+    "open-navigation": "Buka navigasi",
+    "navigation": "Navigasi",
+    "primary-navigation": "Utama",
+    "download": "Unduh",
+    "download-name": "Unduh {{name}}",
+    "open-name": "Buka {{name}}",
+    "preview-name": "Pratinjau {{name}}",
+    "no-content": "Tidak ada konten",
+    "previous": "Sebelumnya",
+    "next": "Berikutnya",
+    "retry": "Coba lagi",
+    "docs": "Dokumentasi",
+    "calendar-for-month": "Kalender untuk {{month}}",
+    "date-at-time": "{{date}} pukul {{time}}",
+    "selected-location": "Lokasi terpilih",
+    "choose-location": "Pilih lokasi",
+    "unknown-error": "Kesalahan tidak diketahui",
+    "error-occurred": "Terjadi kesalahan"
   },
   "locale-picker": {
     "no-language-feedback": "Bahasa tidak ditemukan? Kirim masukan"
@@ -256,7 +273,17 @@
       "alt-text-placeholder": "Jelaskan gambar…",
       "image-unavailable": "Gambar tidak tersedia",
       "resize-image": "Ubah ukuran gambar"
-    }
+    },
+    "attachments": {
+      "move-up": "Pindahkan lampiran ke atas",
+      "move-down": "Pindahkan lampiran ke bawah",
+      "remove": "Hapus lampiran"
+    },
+    "remove-relation": "Hapus relasi",
+    "remove-location": "Hapus lokasi",
+    "recording-unsupported": "Perekaman audio tidak didukung di browser ini.",
+    "microphone-denied": "Izin mikrofon ditolak.",
+    "recording-failed": "Gagal memulai perekaman audio."
   },
   "inbox": {
     "failed-to-load": "Gagal memuat item kotak masuk",
@@ -265,14 +292,28 @@
     "unread": "Belum dibaca",
     "space-invitation": "mengundang Anda untuk bergabung ke sebuah ruang",
     "space-invitation-accepted": "Anda bergabung ke ruang ini.",
-    "space-invitation-open": "Ruang terbuka"
+    "space-invitation-open": "Ruang terbuka",
+    "commented-on-memo": "mengomentari memo Anda",
+    "mentioned-in-comment": "menyebut Anda dalam komentar",
+    "mentioned-in-memo": "menyebut Anda dalam memo",
+    "original": "Asli:",
+    "memo-label": "Memo:",
+    "comment-heading": "Komentar",
+    "memo-heading": "Memo",
+    "empty-memo": "Memo kosong",
+    "empty-comment": "Komentar kosong"
   },
   "memo": {
+    "no-memos-yet": "Belum ada memo",
+    "no-matching-memos": "Tidak ada memo yang cocok",
+    "clear-filters": "Hapus filter",
     "pinned": "Disematkan",
     "click-to-show-sensitive-content": "Klik untuk menampilkan konten NSFW",
     "comment": {
       "self": "Komentar",
-      "write-a-comment": "Tulis komentar"
+      "write-a-comment": "Tulis komentar",
+      "view-all-count_one": "Lihat semua {{count}} komentar",
+      "view-all-count_other": "Lihat semua {{count}} komentar"
     },
     "copy-content": "Salin Konten",
     "copy-link": "Salin Tautan",
@@ -286,7 +327,8 @@
       "has-image": "Memiliki gambar",
       "has-link": "Memiliki tautan",
       "has-location": "Memiliki lokasi",
-      "has-task-list": "Memiliki daftar tugas"
+      "has-task-list": "Memiliki daftar tugas",
+      "remove": "Hapus filter"
     },
     "compact-mode": "Mode ringkas",
     "link-preview": "Pratinjau tautan",
@@ -372,7 +414,9 @@
     "restored-successfully": "Berhasil dipulihkan",
     "succeed-copy-content": "Konten berhasil disalin.",
     "succeed-copy-link": "Tautan berhasil disalin.",
-    "update-succeed": "Pembaruan berhasil"
+    "update-succeed": "Pembaruan berhasil",
+    "not-signed-in": "Anda belum masuk.",
+    "invalid-datetime": "Tanggal dan waktu tidak valid. Gunakan format 2023-12-31 23:59:59."
   },
   "reference": {
     "no-memos-found": "Tidak ada memo yang ditemukan",
@@ -407,7 +451,11 @@
       "archived": "Diarsipkan",
       "member-column": "Anggota",
       "active": "Aktif",
-      "summary-column": "Ringkasan"
+      "summary-column": "Ringkasan",
+      "export-memos": "Ekspor memo",
+      "username-password-required": "Nama pengguna dan kata sandi tidak boleh kosong",
+      "create-success": "Pengguna dibuat",
+      "update-success": "Pengguna diperbarui"
     },
     "my-account": {
       "label": "Akun Saya"
@@ -431,13 +479,148 @@
       "theme-description": "Menerapkan tema yang dipilih secara instan pada perangkat ini.",
       "theme": "Tema",
       "uploads-privacy-description": "Mengontrol informasi sensitif privasi yang dikirimkan dengan media yang diunggah.",
-      "uploads-privacy-title": "Unggahan & privasi"
+      "uploads-privacy-title": "Unggahan & privasi",
+      "theme-system": "Ikuti sistem",
+      "theme-system-short": "Sistem",
+      "theme-light": "Terang",
+      "theme-dark": "Gelap",
+      "theme-paper": "Kertas"
+    },
+    "editor": {
+      "label": "Editor",
+      "markdown-mode-description": "Tulis dan sunting memo sebagai teks Markdown, bukan teks berformat."
     },
     "memo-view": {
       "create": "Buat tampilan",
       "delete-confirm": "Apakah Anda yakin ingin menghapus tampilan `{{title}}`?",
       "delete-success": "Tampilan `{{title}}` berhasil dihapus",
-      "change-icon": "Mengubah ikon tampilan"
+      "change-icon": "Mengubah ikon tampilan",
+      "page-description": "Buat tampilan yang dapat digunakan ulang dengan bidang, operator, fungsi waktu, dan pencocokan tag. Gunakan contoh sebagai titik awal, lalu validasi sebelum menyimpan.",
+      "edit": "Edit tampilan",
+      "form-description": "Beri nama tampilan dan tentukan ekspresi filter memo yang akan diterapkan.",
+      "title-placeholder": "Disematkan, Catatan terbaru, Kerja",
+      "filter-help": "Gabungkan ekspresi dengan {{and}}, {{or}}, dan {{not}}. Bidang waktu berupa stempel waktu — gunakan {{now}}, {{duration}}, {{timestamp}}, dan pengakses seperti {{year}}. Tag mendukung {{sets}}, dan {{size}} mengukur panjang.",
+      "validate": "Validasi",
+      "all": "Semua tampilan",
+      "loading": "Memuat tampilan…",
+      "load-failed": "Gagal memuat tampilan.",
+      "empty-title": "Belum ada tampilan",
+      "empty-description": "Simpan filter untuk kembali dengan cepat ke memo yang Anda butuhkan.",
+      "examples-title": "Contoh ekspresi",
+      "fields-title": "Bidang yang didukung",
+      "title-filter-required": "Judul dan filter tidak boleh kosong",
+      "filter-valid": "Ekspresi filter tampak valid",
+      "create-success": "Tampilan dibuat",
+      "update-success": "Tampilan diperbarui",
+      "examples": {
+        "pinned": {
+          "title": "Disematkan",
+          "description": "Hanya memo yang disematkan."
+        },
+        "recent": {
+          "title": "Catatan terbaru",
+          "description": "Memo yang dibuat dalam satu jam terakhir."
+        },
+        "public": {
+          "title": "Memo publik",
+          "description": "Hanya memo publik."
+        },
+        "project-tags": {
+          "title": "Tag proyek",
+          "description": "Cocokkan satu atau beberapa tag yang persis."
+        },
+        "untagged": {
+          "title": "Tanpa tag",
+          "description": "Memo tanpa tag apa pun."
+        },
+        "archive-tree": {
+          "title": "Pohon arsip",
+          "description": "Cocokkan tag hierarkis berdasarkan awalan."
+        },
+        "unassigned": {
+          "title": "Belum ditempatkan",
+          "description": "Memo yang tidak ditempatkan di ruang mana pun."
+        },
+        "one-space": {
+          "title": "Di satu ruang",
+          "description": "Memo yang ditempatkan di sebuah ruang. Gunakan ID ruang dari URL atau pengaturannya."
+        },
+        "open-tasks": {
+          "title": "Tugas terbuka",
+          "description": "Memo dengan tugas yang belum selesai."
+        },
+        "links-or-code": {
+          "title": "Tautan atau kode",
+          "description": "Memo yang berisi tautan atau blok kode."
+        },
+        "no-location": {
+          "title": "Tanpa lokasi",
+          "description": "Memo tanpa lokasi terlampir."
+        },
+        "with-attachments": {
+          "title": "Dengan lampiran",
+          "description": "Memo dengan setidaknya satu file terlampir."
+        },
+        "photos": {
+          "title": "Foto",
+          "description": "Memo yang menampilkan gambar, di konten atau sebagai file terlampir."
+        },
+        "content-search": {
+          "title": "Pencarian konten",
+          "description": "Cari teks di dalam konten memo."
+        },
+        "starts-with": {
+          "title": "Diawali dengan",
+          "description": "Memo yang kontennya diawali dengan teks tertentu (juga endsWith)."
+        },
+        "regex": {
+          "title": "Cocok regex",
+          "description": "Cocokkan konten dengan ekspresi reguler."
+        },
+        "all-tags-complete": {
+          "title": "Semua tag selesai",
+          "description": "Setiap tag berakhiran -done (hanya memo bertag)."
+        },
+        "one-project-tag": {
+          "title": "Satu tag proyek",
+          "description": "Tepat satu tag yang memenuhi predikat."
+        },
+        "any-tags": {
+          "title": "Salah satu tag ini",
+          "description": "Tag beririsan dengan himpunan yang diberikan."
+        },
+        "exact-tags": {
+          "title": "Tepat tag-tag ini",
+          "description": "Diberi tag tepat dengan himpunan ini, tidak lebih."
+        },
+        "year-2024": {
+          "title": "Memo dari 2024",
+          "description": "Saring berdasarkan tahun kalender."
+        },
+        "weekend": {
+          "title": "Catatan akhir pekan",
+          "description": "Dibuat pada hari Minggu atau Sabtu (0 = Minggu)."
+        },
+        "long": {
+          "title": "Catatan panjang",
+          "description": "Memo yang lebih dari 280 karakter."
+        }
+      }
+    },
+    "configuration": {
+      "label": "Konfigurasi",
+      "description": "Sumber daya yang diatur oleh berkas konfigurasi. Sunting berkas lalu terapkan untuk mengubahnya; bagian lain instans tetap dapat disunting di sini.",
+      "managed-by": "Dikelola oleh konfigurasi",
+      "managed-tooltip": "Diatur di {{source}}. Sunting berkas lalu terapkan untuk mengubahnya.",
+      "resource": "Sumber daya",
+      "source": "Berkas",
+      "managed-fields": "Bidang yang dikelola",
+      "whole-resource": "Semua bidang",
+      "ignored-fields": "Dapat disunting di sini",
+      "serial": "Nomor seri",
+      "last-apply": "Terakhir diterapkan",
+      "applied-by": "Diterapkan oleh",
+      "nothing-managed": "Belum ada konfigurasi yang diterapkan. Semuanya diatur di sini."
     },
     "sso": {
       "authorization-endpoint": "Akhir Otorisasi",
@@ -498,7 +681,9 @@
       "scopes-description": "Pisahkan cakupan dengan spasi. Sebagian besar penyedia hanya membutuhkan sejumlah kecil cakupan seperti profil atau akses email.",
       "template-description": "Mulai dari preset penyedia, lalu sesuaikan kredensial dan titik akhir untuk penyewa Anda.",
       "unlink-success": "Tidak terhubung {{name}}.",
-      "update-sso-description": "Tinjau konfigurasi penyedia, lalu simpan bidang yang perlu diubah."
+      "update-sso-description": "Tinjau konfigurasi penyedia, lalu simpan bidang yang perlu diubah.",
+      "invalid-config": "Konfigurasi penyedia identitas tidak valid.",
+      "provider-id-placeholder": "mis. github, okta-corp"
     },
     "storage": {
       "accesskey": "Kunci Akses",
@@ -546,7 +731,8 @@
       "customize-server": {
         "description": "Deskripsi",
         "icon-url": "URL Ikon",
-        "title": "Sesuaikan Server"
+        "title": "Sesuaikan Server",
+        "dialog-description": "Sesuaikan tampilan dan pengaturan instans Anda."
       },
       "server-name": "Nama Server",
       "label": "Sistem",
@@ -652,7 +838,9 @@
       "danger-area-description": "Tindakan akun yang tidak dapat dibatalkan ada di sini. Tinjau dengan saksama sebelum melanjutkan.",
       "delete-account": "Hapus akun",
       "delete-account-description": "Hapus akun ini dan semua akses terkait dari instance ini secara permanen. Tindakan ini tidak dapat dibatalkan.",
-      "email-in-use": "Email ini sudah digunakan oleh akun lain."
+      "email-in-use": "Email ini sudah digunakan oleh akun lain.",
+      "avatar-too-large": "Pilih gambar berukuran 2 MB atau kurang.",
+      "avatar-unreadable": "Gambar ini tidak dapat dibaca. Coba file lain."
     },
     "instance": {
       "disallow-change-nickname": "Larangan mengubah nama panggilan",
@@ -809,7 +997,9 @@
       "review-existing": "Sudah ada di akun Anda",
       "review-exported": "Diekspor oleh",
       "review-memos": "Memo di file",
-      "review-new": "Akan dibuat"
+      "review-new": "Akan dibuat",
+      "export-admin-only": "Hanya administrator yang dapat mengekspor memo. Minta berkas ekspor Anda kepada administrator.",
+      "export-busy": "Ekspor lain sedang berjalan. Coba lagi sebentar."
     },
     "spaces": {
       "general": "Umum",
@@ -948,7 +1138,8 @@
   },
   "tooltip": {
     "link-memo": "Tautkan Memo",
-    "select-location": "Pilih Lokasi"
+    "select-location": "Pilih Lokasi",
+    "link-memo-description": "Cari dan pilih memo untuk ditautkan"
   },
   "live-update": {
     "connected": "Pembaruan langsung aktif",
@@ -1037,7 +1228,12 @@
     "loading": "Memuat memo…",
     "new-here": "Tulis di sini",
     "saved-outside-filter": "Tersimpan. Memo ini berada di luar hasil peta saat ini.",
-    "open-memo": "Buka memo"
+    "open-memo": "Buka memo",
+    "open-in-google-maps": "Buka di Google Maps",
+    "location-description": "Pilih lokasi di peta atau masukkan koordinat secara manual",
+    "latitude": "Lintang",
+    "longitude": "Bujur",
+    "place-placeholder": "Pilih posisi terlebih dahulu."
   },
   "calendar": {
     "new-memo-on-day": "Memo baru pada hari ini",
@@ -1100,5 +1296,102 @@
     "name-placeholder": "misal Produk",
     "spaces": "Ruang",
     "switch": "Ganti ruang"
+  },
+  "welcome": {
+    "title": "Selamat datang di Memos",
+    "headline": "Pencatatan sederhana untuk pikiran sehari-hari Anda.",
+    "intro-write": "Satu kalimat saja bisa menjadi satu memo utuh.",
+    "intro-keep": "Setiap memo tetap bersama hari saat Anda menulisnya.",
+    "intro-share": "Anda yang memilih apa yang tetap pribadi.",
+    "write": "Menulis",
+    "write-sub": "Satu kalimat saja bisa menjadi satu memo utuh.",
+    "no-title": "Tanpa judul",
+    "no-title-text": "Memo dimulai dari pikiran itu sendiri. Tidak ada judul yang perlu diisi.",
+    "markdown": "Markdown",
+    "markdown-text": "Markdown memberi struktur pada tulisan Anda saat Anda menginginkannya.",
+    "attach": "Lampirkan",
+    "attach-text": "Gambar, berkas, audio, dan lokasi masuk melalui ＋.",
+    "keep": "Menyimpan",
+    "keep-sub": "Setiap memo tetap bersama hari saat Anda menulisnya.",
+    "calendar-text": "Kalender membawa Anda kembali ke hari mana pun.",
+    "tags-text": "Kata setelah # menjadi tag, dan tag menyaring linimasa.",
+    "views-text": "Tampilan kustom menyimpan sebuah filter.",
+    "map-text": "Memo yang memiliki lokasi muncul di peta.",
+    "share": "Berbagi",
+    "share-sub": "Memo dimulai sebagai pribadi. Anda yang memilih apa yang dibagikan dan apa yang dipublikasikan.",
+    "visibility-text": "Setiap memo punya pengaturannya sendiri. Memo baru dimulai sebagai pribadi, hanya untuk Anda; memo publik punya tautan yang bisa dibuka siapa saja.",
+    "spaces-text": "Di dalam ruang, anggota menulis bersama Anda, masing-masing menyimpan memonya sendiri.",
+    "comments": "Komentar",
+    "comments-text": "Siapa pun yang bisa melihat memo bisa membalas di bawahnya.",
+    "skip": "Lewati",
+    "next": "Berikutnya",
+    "done": "Selesai",
+    "page-of": "Halaman {{current}} dari {{total}}",
+    "reopen": "Panduan sambutan",
+    "reopen-note": "Empat layar yang pertama kali dilihat akun baru.",
+    "sample": {
+      "today": "Hari ini, 10:42",
+      "today-early": "Hari ini, 9:18",
+      "yesterday": "Kemarin, 15:20",
+      "comment-age": "2 j",
+      "memo-preview": "Layar pertama yang lebih sederhana. Satu masukan, lalu pratinjau.",
+      "memo-release": "Sebelum rilis berikutnya",
+      "task-sketch": "Membuat sketsa layar pertama",
+      "task-polish": "Merapikan pratinjau",
+      "write-lead": "Langkah pertama tetap kecil.",
+      "write-strong": "Detail ditampilkan",
+      "write-tail": "saat dibutuhkan.",
+      "write-task": "Menulis changelog singkat",
+      "view": "Tugas belum selesai",
+      "space": "Produk",
+      "share-memo": "Coba tunjukkan hasilnya dulu sebelum meminta orang mendaftar.",
+      "comment": "Setuju. Pratinjaunya yang meyakinkan.",
+      "tag-design": "desain",
+      "tag-project": "proyek",
+      "tag-reading": "bacaan",
+      "tag-ideas": "ide"
+    }
+  },
+  "error": {
+    "title": "Terjadi masalah",
+    "description": "Terjadi kesalahan yang tidak terduga. Ini bisa disebabkan oleh masalah jaringan atau masalah pada aplikasi.",
+    "description-update": "Terjadi kesalahan yang tidak terduga. Ini bisa disebabkan oleh masalah jaringan atau pembaruan aplikasi. Memuat ulang biasanya dapat mengatasinya.",
+    "details": "Detail kesalahan",
+    "reload": "Muat ulang aplikasi",
+    "not-found": "Halaman yang Anda cari tidak dapat ditemukan.",
+    "permission-denied": "Izin ditolak",
+    "too-many-requests": "Terlalu banyak permintaan. Coba lagi dalam {{wait}}.",
+    "wait-seconds": "{{count}} dtk",
+    "wait-minutes": "{{count}} mnt",
+    "wait-hours": "{{count}} jam",
+    "challenge-required": "Selesaikan tantangan verifikasi, lalu coba lagi.",
+    "quota-memo-count": "Anda telah mencapai batas {{limit}} memo. Hapus beberapa memo untuk membuat yang baru.",
+    "quota-storage": "Unggahan ini akan melebihi batas penyimpanan Anda sebesar {{limit}}. Anda sedang menggunakan {{usage}}.",
+    "quota-upload": "File ini melebihi batas {{limit}} per file Anda.",
+    "quota-memo-content": "Memo ini melebihi batas {{limit}} per memo Anda. Persingkat kontennya agar dapat disimpan.",
+    "quota-generic": "Anda telah mencapai batas penggunaan.",
+    "sign-in-failed": "Gagal masuk.",
+    "sign-up-failed": "Gagal mendaftar",
+    "authenticate-failed": "Gagal mengautentikasi.",
+    "update-profile-failed": "Gagal memperbarui profil",
+    "unlink-identity-failed": "Gagal memutuskan tautan penyedia identitas.",
+    "link-identity-failed": "Gagal memulai penautan akun. Silakan coba lagi."
+  },
+  "attachment-preview": {
+    "title": "Pratinjau lampiran",
+    "description": "Dialog pratinjau lampiran. Tekan Escape untuk menutup, gunakan tombol panah kiri atau kanan untuk berpindah item, dan perbesar gambar dengan kontrol, roda mouse, ketuk dua kali, atau gerakan cubit.",
+    "close": "Tutup pratinjau",
+    "previous": "Item sebelumnya",
+    "next": "Item berikutnya",
+    "reset-zoom": "Atur ulang zoom",
+    "image-alt": "Pratinjau gambar {{index}} dari {{count}}",
+    "live-photo-alt": "Pratinjau foto langsung {{index}} dari {{count}}",
+    "play-live-photo": "Arahkan kursor atau tekan untuk memutar foto langsung"
+  },
+  "audio-player": {
+    "seek": "Geser posisi {{name}}",
+    "back": "Mundur {{seconds}} detik",
+    "forward": "Maju {{seconds}} detik",
+    "speed": "Kecepatan putar {{rate}}x"
   }
 }

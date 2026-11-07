@@ -81,3 +81,7 @@ Questions go to the [docs](https://usememos.com/docs), [Discord](https://discord
 ## License
 
 Memos is open source under the [MIT License](LICENSE).
+
+## DOCX export (this fork)
+
+This fork can export memos to Word (`.docx`) — per memo from the action menu, or all memos (with an optional date range) from Settings → Export & Import. See [DOCX_EXPORT.md](DOCX_EXPORT.md).

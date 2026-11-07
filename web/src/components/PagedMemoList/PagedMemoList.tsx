@@ -1,6 +1,6 @@
-import { ArrowUpIcon, LoaderCircleIcon } from "lucide-react";
+import { Button, Skeleton } from "@usememos/ui";
+import { ArrowUpIcon } from "lucide-react";
 import { type ReactElement, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useAppSidebar } from "@/contexts/AppSidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSearchFilter, useMemoFilterContext } from "@/contexts/MemoFilterContext";
@@ -12,13 +12,16 @@ import { useInfiniteMemos } from "@/hooks/useMemoQueries";
 import { hoistMemoToFront } from "@/hooks/useMemoSorting";
 import { combineCELFilters } from "@/lib/cel-filter";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE, LOADING_INDICATOR_DELAY_MS } from "@/lib/constants";
+import { memoSelection, useMemoSelection } from "@/lib/memo-selection";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/common_pb";
 import type { Memo } from "@/types/proto/api/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import ColumnGrid, { ColumnGridUntrappedProvider, columnCountForWidth, GRID_GAP } from "../ColumnGrid";
 import MemoFilters from "../MemoFilters";
+import { MEMO_CARD_BASE_CLASSES } from "../MemoView/constants";
 import Placeholder from "../Placeholder";
+import EmptyLine from "./EmptyLine";
 import MemoListError from "./MemoListError";
 import { estimateMemoCardHeight } from "./memoCardHeight";
 
@@ -31,11 +34,21 @@ export const getMemoKey = (memo: Memo) => memo.name;
 // grid centers in the leftover space instead of filling it.
 const MAX_COLUMN_WIDTH = 420;
 
-const Loader = () => (
-  <div className="w-full flex flex-row justify-center items-center py-8">
-    <LoaderCircleIcon className="h-6 w-6 animate-spin text-muted-foreground" />
-  </div>
-);
+/** Memos still loading: skeleton cards in the shape of the memos about to appear. */
+const Loader = ({ count = 3 }: { count?: number }) => {
+  const t = useTranslate();
+  return (
+    <div className="flex w-full flex-col" aria-busy="true" aria-label={t("editor.blocks.loading")}>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className={MEMO_CARD_BASE_CLASSES}>
+          <Skeleton width="30%" height={12} />
+          <Skeleton />
+          <Skeleton width="70%" />
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface Props {
   renderer: (memo: Memo, options: { compact: boolean }) => ReactElement;
@@ -51,8 +64,8 @@ interface Props {
   renderLeading?: (options: { useGrid: boolean }) => ReactNode;
   /** Route-owned content spanning the full list width above every column (e.g. a page identity block). */
   renderHeader?: (options: { useGrid: boolean }) => ReactNode;
-  /** Replaces the generic empty-state message when the route knows why the list is empty. */
-  emptyMessage?: string;
+  /** Route-owned first-use content for an empty, unfiltered list. Without it the generic placeholder shows. */
+  emptyState?: ReactNode;
 }
 
 function useAutoFetchWhenNotScrollable({
@@ -122,7 +135,7 @@ function useAutoFetchWhenNotScrollable({
 const PagedMemoList = (props: Props) => {
   const t = useTranslate();
   const { isUserSettingsInitialized } = useAuth();
-  const { filters, memoView, removeFilter } = useMemoFilterContext();
+  const { filters, memoView, removeFilter, setFilters, setMemoView } = useMemoFilterContext();
   const { setQuickFindOpen } = useAppSidebar();
   const { maxColumns, compactMode } = useView();
   // maxColumns is a ceiling: 1 = single reading column, 0 = as many as fit. The single
@@ -230,11 +243,24 @@ const PagedMemoList = (props: Props) => {
     [props.showCreator, displayMemoList],
   );
 
+  const selecting = useMemoSelection((s) => s.active);
   const hasFilters = filters.length > 0 || memoView !== undefined;
-  const emptyPlaceholder =
-    !isDisplayPending && !isError && !isFetchingNextPage && !hasNextPage && displayMemoList.length === 0 ? (
-      <Placeholder scene={hasFilters ? "search" : "memo"} message={props.emptyMessage ?? t("message.no-data")} className="w-full" />
-    ) : null;
+  const showFilterRow = hasFilters || selecting;
+  useEffect(() => {
+    memoSelection.setVisible(displayMemoList.map((memo) => memo.name));
+  }, [displayMemoList]);
+  useEffect(() => () => memoSelection.exit(), []);
+  const isEmpty = !isDisplayPending && !isError && !isFetchingNextPage && !hasNextPage && displayMemoList.length === 0;
+  const clearFilters = () => {
+    setFilters([]);
+    setMemoView(undefined);
+  };
+  // No results is neutral and offers the way out; first use belongs to the route.
+  const emptyPlaceholder = !isEmpty ? null : hasFilters ? (
+    <EmptyLine message={t("memo.no-matching-memos")} action={t("memo.clear-filters")} onAction={clearFilters} />
+  ) : (
+    (props.emptyState ?? <Placeholder scene="memo" message={t("message.no-data")} className="w-full" />)
+  );
   const initialLoader = isDisplayPending && showLoader ? <Loader /> : null;
   // Only a query the user typed can be edited or cleared from the error; facet and scope
   // filters are fixed by the route.
@@ -256,7 +282,7 @@ const PagedMemoList = (props: Props) => {
   // above). Every vertical seam inside the stack uses GRID_GAP so y-spacing matches the
   // grid's x-spacing exactly.
   const gridLeading =
-    leadingContent || hasFilters || initialLoader || emptyPlaceholder || initialError ? (
+    leadingContent || showFilterRow || initialLoader || emptyPlaceholder || initialError ? (
       <div className="flex w-full flex-col" style={{ gap: GRID_GAP }}>
         {leadingContent}
         <MemoFilters />
@@ -270,7 +296,7 @@ const PagedMemoList = (props: Props) => {
   const footer = (
     <>
       {pageError}
-      {isFetchingNextPage && <Loader />}
+      {isFetchingNextPage && <Loader count={1} />}
       {!isFetchingNextPage && (hasNextPage || displayMemoList.length > 0) && <BackToTop />}
     </>
   );
@@ -344,9 +370,8 @@ const BackToTop = () => {
 
   return (
     <div className="my-4 flex w-full flex-row items-center justify-center opacity-70">
-      <Button variant="ghost" onClick={scrollToTop}>
+      <Button variant="ghost" iconEnd={<ArrowUpIcon />} onClick={scrollToTop}>
         {t("router.back-to-top")}
-        <ArrowUpIcon className="ml-1 w-4 h-auto" />
       </Button>
     </div>
   );

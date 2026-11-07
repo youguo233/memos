@@ -1,9 +1,10 @@
+import { Separator } from "@usememos/ui";
 import { ArrowRightIcon, LockIcon } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import AuthPageLayout, { AuthEmptyState, AuthLinkPrompt, AuthOptionsLoading } from "@/components/AuthPageLayout";
 import IdentityProviderButtons from "@/components/IdentityProviderButtons";
+import PasskeySignInButton from "@/components/PasskeySignInButton";
 import PasswordSignInForm from "@/components/PasswordSignInForm";
-import { Separator } from "@/components/ui/separator";
 import { useInstance } from "@/contexts/InstanceContext";
 import { useIdentityProviderList } from "@/hooks/useIdentityProviderQueries";
 import { ROUTES } from "@/router/routes";
@@ -38,7 +39,7 @@ const SignIn = () => {
             />
           )}
           {hasIdentityProviders && passwordAuthAllowed && (
-            <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
+            <div className="my-4 flex items-center gap-3 mu-caption uppercase tracking-wider text-mu-ink-muted">
               <div className="flex-1">
                 <Separator />
               </div>
@@ -49,19 +50,26 @@ const SignIn = () => {
             </div>
           )}
           {passwordAuthAllowed && <PasswordSignInForm redirectPath={redirectTarget} />}
+          <div className="mt-3">
+            <PasskeySignInButton redirectPath={redirectTarget} />
+          </div>
           {passwordAuthAllowed && !instanceGeneralSetting.disallowUserRegistration && (
             <AuthLinkPrompt prompt={t("auth.sign-up-tip")} to={signUpPath} label={t("common.sign-up")} />
           )}
         </>
       ) : (
         <AuthEmptyState
-          icon={<LockIcon className="h-5 w-5" />}
+          icon={<LockIcon />}
           title={t("auth.signin-unavailable-title")}
           description={t("auth.signin-unavailable-description")}
         >
-          <Link to={ROUTES.AUTH_ADMIN} className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline" viewTransition>
+          <Link
+            to={ROUTES.AUTH_ADMIN}
+            className="mt-3 inline-flex items-center gap-1 mu-body text-mu-accent hover:underline"
+            viewTransition
+          >
             {t("auth.admin-sign-in")}
-            <ArrowRightIcon className="h-3.5 w-3.5 rtl:rotate-180" />
+            <ArrowRightIcon className="mu-icon-sm rtl:rotate-180" />
           </Link>
         </AuthEmptyState>
       )}

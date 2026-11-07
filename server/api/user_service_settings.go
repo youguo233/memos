@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -115,6 +116,13 @@ func (s *APIService) UpdateUserSetting(ctx context.Context, request *apipb.Updat
 				updatedGeneral.Locale = incomingGeneral.Locale
 			case "save_media_metadata":
 				updatedGeneral.SaveMediaMetadata = incomingGeneral.SaveMediaMetadata
+			case "timezone":
+				if tz := incomingGeneral.Timezone; tz != "" {
+					if _, err := time.LoadLocation(tz); err != nil || tz == "Local" {
+						return nil, status.Errorf(codes.InvalidArgument, "invalid timezone %q", tz)
+					}
+				}
+				updatedGeneral.Timezone = incomingGeneral.Timezone
 			default:
 				// Ignore unsupported fields.
 			}
@@ -151,6 +159,30 @@ func (s *APIService) UpdateUserSetting(ctx context.Context, request *apipb.Updat
 			Name: request.UserSetting.Name,
 			Value: &apipb.UserSetting_TagsSetting_{
 				TagsSetting: incomingTags,
+			},
+		}
+	case storepb.UserSetting_EDITOR:
+		var shouldUpdateSourceMode bool
+		for _, field := range request.UpdateMask.Paths {
+			switch field {
+			case "source_mode":
+				shouldUpdateSourceMode = true
+			default:
+				return nil, status.Errorf(codes.InvalidArgument, "unsupported update mask path for editor setting: %s", field)
+			}
+		}
+		if !shouldUpdateSourceMode {
+			return nil, status.Errorf(codes.InvalidArgument, "update mask must include source_mode")
+		}
+
+		incomingEditor := request.UserSetting.GetEditorSetting()
+		if incomingEditor == nil {
+			return nil, status.Errorf(codes.InvalidArgument, "editor setting is required")
+		}
+		updatedSetting = &apipb.UserSetting{
+			Name: request.UserSetting.Name,
+			Value: &apipb.UserSetting_EditorSetting_{
+				EditorSetting: &apipb.UserSetting_EditorSetting{SourceMode: incomingEditor.SourceMode},
 			},
 		}
 	default:

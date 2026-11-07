@@ -1,7 +1,6 @@
 import { create } from "@bufbuild/protobuf";
+import { Select, Switch } from "@usememos/ui";
 import { useMemo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateDevicePreferences, useDevicePreferences } from "@/hooks/useDevicePreferences";
 import { useUpdateUserGeneralSetting } from "@/hooks/useUserQueries";
@@ -15,6 +14,7 @@ import VisibilityIcon from "../VisibilityIcon";
 import SettingGroup from "./SettingGroup";
 import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
+import TimezoneSetting from "./TimezoneSetting";
 
 const PreferencesSection = () => {
   const t = useTranslate();
@@ -77,6 +77,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleTimezoneChange = (timezone: string) => {
+    updateUserGeneralSetting(
+      { generalSetting: { timezone }, updateMask: ["timezone"] },
+      {
+        onSuccess: async () => {
+          await refetchSettings();
+        },
+      },
+    );
+  };
+
   // Provide default values if setting is not loaded yet
   const setting: UserSetting_GeneralSetting =
     generalSetting ||
@@ -98,6 +109,8 @@ const PreferencesSection = () => {
           <SettingListItem label={t("setting.preference.theme")} description={t("setting.preference.theme-description")}>
             <ThemeSelect value={setting.theme} onValueChange={handleThemeChange} />
           </SettingListItem>
+
+          <TimezoneSetting value={setting.timezone} disabled={isUpdatingGeneralSetting} onChange={handleTimezoneChange} />
         </SettingList>
       </SettingGroup>
 
@@ -111,25 +124,25 @@ const PreferencesSection = () => {
             label={t("setting.preference.default-memo-visibility")}
             description={t("setting.preference.default-memo-visibility-description")}
           >
-            <Select
+            <Select.Root
               value={setting.memoVisibility || "PRIVATE"}
               items={visibilityOptions}
-              onValueChange={handleDefaultMemoVisibilityChanged}
+              onValueChange={(value) => value !== null && handleDefaultMemoVisibilityChanged(value)}
             >
-              <SelectTrigger className="min-w-fit">
+              <Select.Trigger className="min-w-fit">
                 <div className="flex items-center gap-2">
                   <VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility)} />
-                  <SelectValue />
+                  <Select.Value />
                 </div>
-              </SelectTrigger>
-              <SelectContent>
+              </Select.Trigger>
+              <Select.Popup>
                 {visibilityOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="whitespace-nowrap">
+                  <Select.Item key={option.value} value={option.value} className="whitespace-nowrap">
                     {option.label}
-                  </SelectItem>
+                  </Select.Item>
                 ))}
-              </SelectContent>
-            </Select>
+              </Select.Popup>
+            </Select.Root>
           </SettingListItem>
         </SettingList>
       </SettingGroup>

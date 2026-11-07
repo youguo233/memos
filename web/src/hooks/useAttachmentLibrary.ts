@@ -1,5 +1,4 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
-import dayjs from "dayjs";
 import { useEffect, useMemo } from "react";
 import {
   getAttachmentMetadata,
@@ -9,8 +8,9 @@ import {
 } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import { useInfiniteAttachments } from "@/hooks/useAttachmentQueries";
 import { combineCELFilters } from "@/lib/cel-filter";
+import { zdayjs, zparse } from "@/lib/timezone";
 import type { Attachment, ListAttachmentsRequest } from "@/types/proto/api/attachment_service_pb";
-import { isMotionAttachment } from "@/utils/attachment";
+import { getAttachmentUrl, isMotionAttachment } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import { type AttachmentVisualItem, buildAttachmentVisualItems, countLogicalAttachmentItems } from "@/utils/media-item";
 
@@ -123,7 +123,7 @@ const toLibraryListItem = (attachment: Attachment, locale: string): AttachmentLi
     fileTypeLabel,
     fileSizeLabel,
     memoName: attachment.memo,
-    sourceUrl: attachment.externalLink || `${window.location.origin}/file/${attachment.name}/${attachment.filename}`,
+    sourceUrl: getAttachmentUrl(attachment),
   };
 };
 
@@ -150,7 +150,7 @@ const groupMediaByMonth = (
   const groups = new Map<string, AttachmentLibraryMediaItem[]>();
 
   for (const item of items) {
-    const key = item.createdAt ? dayjs(item.createdAt).format("YYYY-MM") : "unknown";
+    const key = item.createdAt ? zdayjs(item.createdAt).format("YYYY-MM") : "unknown";
     const group = groups.get(key) ?? [];
     group.push(item);
     groups.set(key, group);
@@ -163,7 +163,7 @@ const groupMediaByMonth = (
       label:
         key === "unknown"
           ? unknownDateLabel
-          : dayjs(`${key}-01`).toDate().toLocaleDateString(locale, {
+          : zparse(`${key}-15 12:00:00`).toDate().toLocaleDateString(locale, {
               month: "short",
               year: "numeric",
             }),

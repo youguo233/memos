@@ -5,6 +5,7 @@ import { memoServiceClient } from "@/connect";
 import { useView } from "@/contexts/ViewContext";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import { getLocalMonthTimestampRange, withTimestampRange } from "@/lib/calendar-utils";
+import { useUserTimeZone } from "@/lib/timezone";
 import { State } from "@/types/proto/api/common_pb";
 import { ListMemosRequestSchema, type Memo } from "@/types/proto/api/memo_service_pb";
 import { type BuildCalendarMonthModelOptions, buildCalendarMonthModel } from "./dayModel";
@@ -52,6 +53,7 @@ export const useMonthMemos = ({ month, filter, enabled = true, isRedacted }: Use
   });
 
   const memos = query.data ?? NO_MEMOS;
-  const model = useMemo(() => buildCalendarMonthModel(memos, timeBasis, { isRedacted }), [memos, timeBasis, isRedacted]);
+  const timeZone = useUserTimeZone();
+  const model = useMemo(() => buildCalendarMonthModel(memos, timeBasis, { isRedacted }), [memos, timeBasis, isRedacted, timeZone]);
   return { model, isLoading: query.isLoading, error: query.isError ? query.error : undefined, refetch: query.refetch };
 };

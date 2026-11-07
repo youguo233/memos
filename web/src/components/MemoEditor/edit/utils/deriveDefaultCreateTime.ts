@@ -1,5 +1,6 @@
 import type { MemoFilter } from "@/contexts/MemoFilterContext";
 import { parseLocalDate } from "@/lib/calendar-utils";
+import { zdayjs } from "@/lib/timezone";
 
 /**
  * Derive a default `createTime` for a new memo from the active memo filters.
@@ -25,9 +26,8 @@ export function deriveDefaultCreateTimeFromDate(value: string, now: Date = new D
 
 /** A copy of `date` whose wall-clock hh:mm:ss is taken from `now`; the calendar day is kept. */
 export function withTimeOfDay(date: Date, now: Date = new Date()): Date {
-  const next = new Date(date);
-  next.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
-  return next;
+  const clock = zdayjs(now);
+  return zdayjs(date).hour(clock.hour()).minute(clock.minute()).second(clock.second()).millisecond(0).toDate();
 }
 
 /**

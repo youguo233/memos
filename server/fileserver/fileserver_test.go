@@ -37,12 +37,10 @@ import (
 	teststore "github.com/usememos/memos/store/test"
 )
 
-func TestServeAttachmentFile_S3(t *testing.T) {
-	ctx := context.Background()
-	fake := fakes3.New(t, "file-server-attachments")
-	svc, fs, stores, cleanup := newShareAttachmentTestServices(ctx, t)
-	defer cleanup()
-
+// configureFakeS3Storage makes the fake S3 bucket "file-server-attachments"
+// the instance's default attachment storage.
+func configureFakeS3Storage(ctx context.Context, t *testing.T, stores *store.Store, fake *fakes3.Server) {
+	t.Helper()
 	configuredStorage := &storepb.Storage{
 		Id:     "s3-files",
 		Name:   "File server S3",
@@ -58,6 +56,29 @@ func TestServeAttachmentFile_S3(t *testing.T) {
 		}},
 	})
 	require.NoError(t, err)
+}
+
+// configureLocalStorage makes the data directory the instance's default
+// attachment storage.
+func configureLocalStorage(ctx context.Context, t *testing.T, stores *store.Store) {
+	t.Helper()
+	_, err := stores.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key: storepb.InstanceSettingKey_STORAGE,
+		Value: &storepb.InstanceSetting_StorageSetting{StorageSetting: &storepb.InstanceStorageSetting{
+			Storages:         []*storepb.Storage{{Id: "local", Name: "Local", Type: storepb.StorageType_STORAGE_TYPE_LOCAL}},
+			DefaultStorageId: "local",
+		}},
+	})
+	require.NoError(t, err)
+}
+
+func TestServeAttachmentFile_S3(t *testing.T) {
+	ctx := context.Background()
+	fake := fakes3.New(t, "file-server-attachments")
+	svc, fs, stores, cleanup := newShareAttachmentTestServices(ctx, t)
+	defer cleanup()
+
+	configureFakeS3Storage(ctx, t, stores, fake)
 
 	creator, err := stores.CreateUser(ctx, &store.User{
 		Username: "s3-file-owner",
@@ -99,6 +120,76 @@ func TestServeAttachmentFile_S3(t *testing.T) {
 	require.Equal(t, http.StatusOK, multiRangeRecorder.Code)
 	require.Equal(t, content, multiRangeRecorder.Body.Bytes())
 	require.Empty(t, multiRangeRecorder.Header().Get("Content-Range"))
+}
+
+// A failed media fetch must answer with the JSON error it actually is, not the
+// attachment's media type: browsers route a Content-Type like application/pdf
+// to their document viewer, which then reports a misleading "Failed to load
+// PDF document" for the JSON body (usememos/memos#6515).
+func TestServeAttachmentFile_StorageFailureIsAJSONError(t *testing.T) {
+	ctx := context.Background()
+	fake := fakes3.New(t, "file-server-attachments")
+	svc, fs, stores, cleanup := newShareAttachmentTestServices(ctx, t)
+	defer cleanup()
+
+	configureFakeS3Storage(ctx, t, stores, fake)
+
+	creator, err := stores.CreateUser(ctx, &store.User{
+		Username: "s3-failure-owner",
+		Role:     store.RoleUser,
+		Email:    "s3-failure-owner@example.com",
+	})
+	require.NoError(t, err)
+	creatorCtx := context.WithValue(ctx, auth.UserIDContextKey, creator.ID)
+
+	var attachments []*apipb.Attachment
+	for _, spec := range []struct{ filename, contentType string }{
+		{"document.pdf", "application/pdf"},
+		{"archive.zip", "application/zip"},
+	} {
+		attachment, err := svc.CreateAttachment(creatorCtx, &apipb.CreateAttachmentRequest{Attachment: &apipb.Attachment{
+			Filename: spec.filename,
+			Type:     spec.contentType,
+			Content:  []byte("s3 bytes"),
+		}})
+		require.NoError(t, err)
+		attachments = append(attachments, attachment)
+	}
+	_, err = svc.CreateMemo(creatorCtx, &apipb.CreateMemoRequest{Memo: &apipb.Memo{
+		Content:     "public S3 attachments",
+		Visibility:  apipb.Visibility_PUBLIC,
+		Attachments: []*apipb.Attachment{{Name: attachments[0].Name}, {Name: attachments[1].Name}},
+	}})
+	require.NoError(t, err)
+
+	e := http.NewServeMux()
+	fs.RegisterRoutes(e, http.HandlerFunc(httphandler.NotFound))
+
+	// Healthy PDFs keep their media type and are served inline so a new tab
+	// renders them in the browser's document viewer.
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/%s", attachments[0].Name, attachments[0].Filename), nil))
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, "application/pdf", recorder.Header().Get("Content-Type"))
+	require.Empty(t, recorder.Header().Get("Content-Disposition"))
+
+	// Drop the backing objects so the S3 reads fail after the handler has
+	// already prepared the attachments' media headers.
+	for _, attachment := range attachments {
+		uid := strings.TrimPrefix(attachment.Name, "attachments/")
+		stored, err := svc.Store.GetAttachment(ctx, &store.FindAttachment{UID: &uid})
+		require.NoError(t, err)
+		require.NoError(t, fake.DeleteObject("file-server-attachments", stored.Payload.GetS3Object().Key))
+	}
+
+	for _, attachment := range attachments {
+		recorder := httptest.NewRecorder()
+		e.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/%s", attachment.Name, attachment.Filename), nil))
+		require.Equal(t, http.StatusInternalServerError, recorder.Code)
+		require.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+		require.Empty(t, recorder.Header().Get("Content-Disposition"))
+		require.Contains(t, recorder.Body.String(), "failed to stream from S3")
+	}
 }
 
 func TestServeAttachmentFile_ShareTokenAllowsDirectMemoAttachment(t *testing.T) {
@@ -1046,14 +1137,7 @@ func TestThumbnailFailureMarkerOnlyForUnsupportedImages(t *testing.T) {
 	ctx := context.Background()
 	svc, fs, cleanup := newSharedProfileTestServices(ctx, t)
 	defer cleanup()
-	_, err := svc.Store.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
-		Key: storepb.InstanceSettingKey_STORAGE,
-		Value: &storepb.InstanceSetting_StorageSetting{StorageSetting: &storepb.InstanceStorageSetting{
-			Storages:         []*storepb.Storage{{Id: "local", Name: "Local", Type: storepb.StorageType_STORAGE_TYPE_LOCAL}},
-			DefaultStorageId: "local",
-		}},
-	})
-	require.NoError(t, err)
+	configureLocalStorage(ctx, t, svc.Store)
 
 	var pngBuf bytes.Buffer
 	require.NoError(t, png.Encode(&pngBuf, image.NewRGBA(image.Rect(0, 0, 8, 8))))
@@ -1078,4 +1162,33 @@ func TestThumbnailFailureMarkerOnlyForUnsupportedImages(t *testing.T) {
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/gone.png?thumbnail=true", attachment.Name), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "image/jpeg", rec.Header().Get("Content-Type"))
+}
+
+// A local attachment whose file is gone from disk answers with the JSON error
+// envelope like every other storage failure, not net/http's plain-text page.
+func TestServeAttachmentFile_MissingLocalFileIsAJSONError(t *testing.T) {
+	ctx := context.Background()
+	svc, fs, cleanup := newSharedProfileTestServices(ctx, t)
+	defer cleanup()
+	configureLocalStorage(ctx, t, svc.Store)
+
+	attachment := createPublicImageMemo(ctx, t, svc, "local-owner", "report.pdf", "application/pdf", []byte("%PDF-1.4 local bytes"))
+	uid := strings.TrimPrefix(attachment.Name, "attachments/")
+	stored, err := svc.Store.GetAttachment(ctx, &store.FindAttachment{UID: &uid})
+	require.NoError(t, err)
+	require.Equal(t, storepb.AttachmentStorageType_LOCAL, stored.StorageType)
+
+	e := http.NewServeMux()
+	fs.RegisterRoutes(e, http.HandlerFunc(httphandler.NotFound))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/report.pdf", attachment.Name), nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/pdf", rec.Header().Get("Content-Type"))
+
+	require.NoError(t, os.Remove(fs.resolveLocalPath(stored.Reference)))
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, fmt.Sprintf("/file/%s/report.pdf", attachment.Name), nil))
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.JSONEq(t, `{"message":"attachment file not found"}`, rec.Body.String())
 }

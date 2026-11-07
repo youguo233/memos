@@ -8,7 +8,11 @@ import { memoKeys } from "@/hooks/useMemoQueries";
 import { AttachmentSchema } from "@/types/proto/api/attachment_service_pb";
 import { MemoSchema, Visibility } from "@/types/proto/api/memo_service_pb";
 
-vi.mock("@/hooks/useUserQueries", () => ({ useTagCounts: () => ({ data: {} }), useUsersByUsernames: () => ({ data: undefined }) }));
+vi.mock("@/hooks/useUserQueries", () => ({
+  useTagCounts: () => ({ data: {} }),
+  useUsersByUsernames: () => ({ data: undefined }),
+  useUpdateUserEditorSetting: () => ({ mutate: vi.fn() }),
+}));
 vi.mock("@/hooks/useCurrentUser", () => ({ default: () => ({ name: "users/1" }) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ userGeneralSetting: {} }) }));
 vi.mock("@/contexts/InstanceContext", () => ({
@@ -57,7 +61,8 @@ describe("existing memo audio transcription", () => {
     );
     await waitFor(() => expect(container.querySelector(".memo-editor-root")?.textContent).toBe(memo.content));
     fireEvent.click(screen.getByRole("button", { name: "Transcribe" }));
-    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+    // Blocked Save stays focusable so its tooltip can say why, so it is aria-disabled rather than disabled.
+    expect(screen.getByRole("button", { name: "Update" })).toHaveAttribute("aria-disabled", "true");
     await act(async () => {
       pending.resolve("Recognized meeting discussion");
       await pending.promise;

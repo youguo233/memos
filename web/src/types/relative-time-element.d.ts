@@ -9,6 +9,7 @@ declare module "react" {
         datetime?: string;
         format?: Format;
         "no-title"?: string;
+        "time-zone"?: string;
       };
     }
   }

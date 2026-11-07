@@ -1,12 +1,13 @@
 import dayjs from "dayjs";
 import type { MemoTimeBasis } from "@/contexts/ViewContext";
 import { combineCELFilters } from "@/lib/cel-filter";
+import { zdayjs, zparse } from "@/lib/timezone";
 
 export const MONTH_DATE_FORMAT = "YYYY-MM" as const;
 export const ISO_DATE_FORMAT = "YYYY-MM-DD" as const;
 
-export const getToday = (): string => dayjs().format(ISO_DATE_FORMAT);
-export const getCurrentMonth = (): string => dayjs().format(MONTH_DATE_FORMAT);
+export const getToday = (): string => zdayjs().format(ISO_DATE_FORMAT);
+export const getCurrentMonth = (): string => zdayjs().format(MONTH_DATE_FORMAT);
 
 export const addMonths = (date: Date | string, count: number): string => {
   return dayjs(date).add(count, "month").format(MONTH_DATE_FORMAT);
@@ -14,7 +15,7 @@ export const addMonths = (date: Date | string, count: number): string => {
 
 /** "August 2026" for `YYYY-MM`, in the viewer's language. */
 export const formatMonthLabel = (month: string, locale: string): string =>
-  dayjs(month).toDate().toLocaleString(locale, { year: "numeric", month: "long" });
+  zparse(`${month}-15 12:00:00`).toDate().toLocaleString(locale, { year: "numeric", month: "long" });
 
 /**
  * The local midnight named by `YYYY-MM-DD`, or undefined for anything else — including
@@ -26,7 +27,8 @@ export const parseLocalDate = (value: string): Date | undefined => {
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const candidate = new Date(year, month - 1, day);
   if (candidate.getFullYear() !== year || candidate.getMonth() !== month - 1 || candidate.getDate() !== day) return undefined;
-  return candidate;
+  // Midnight of that day in the preferred UI zone (the browser's local midnight on "System").
+  return zparse(value).toDate();
 };
 
 /** A half-open `[start, end)` window in epoch seconds, in the viewer's local time zone. */
@@ -44,16 +46,14 @@ const toRange = (start: Date, end: Date): LocalTimestampRange => ({
 export const getLocalDayTimestampRange = (value: string): LocalTimestampRange | undefined => {
   const start = parseLocalDate(value);
   if (!start) return undefined;
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return toRange(start, end);
+  return toRange(start, zparse(value).add(1, "day").toDate());
 };
 
 /** The local calendar month named by `YYYY-MM`, or undefined for an invalid month. */
 export const getLocalMonthTimestampRange = (value: string): LocalTimestampRange | undefined => {
   const start = parseLocalDate(`${value}-01`);
   if (!start) return undefined;
-  return toRange(start, new Date(start.getFullYear(), start.getMonth() + 1, 1));
+  return toRange(start, zparse(`${value}-01`).add(1, "month").toDate());
 };
 
 /** The CEL timestamp field a time basis is stored under. */
