@@ -1,7 +1,7 @@
+import { Checkbox } from "@usememos/ui";
 import { forwardRef, memo, Suspense, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useColumnGridUntrapped } from "@/components/ColumnGrid/ColumnGridContext";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useResolvedUser } from "@/contexts/MentionResolutionContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
@@ -194,7 +194,7 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
       tabIndex={readonly ? -1 : 0}
     >
       {selecting && (
-        <label className="-mx-1 mb-1 flex w-fit cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground">
+        <label className="-mx-1 mb-1 flex w-fit cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-mu-ink-muted">
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => memoSelection.toggle(memoData.name)}
@@ -203,10 +203,11 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
           {isSelected ? t("memo.batch-export.selected") : t("memo.batch-export.select-this")}
         </label>
       )}
-      {showPinned && memoData.pinned && <MemoPinnedMark />}
+      {/* The editing session's Markdown tag takes the pinned mark's corner. */}
+      {showPinned && memoData.pinned && !isEditing && <MemoPinnedMark />}
       <MemoHeader timeDisplay={timeDisplay} showCreator={showCreator} showVisibility={showVisibility} showSpace={showSpace} />
 
-      <MemoBody compact={compact} />
+      <MemoBody compact={compact} showCreator={showCreator} />
 
       {previewState.items.length > 0 && (
         <Suspense fallback={null}>

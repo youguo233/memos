@@ -1,13 +1,10 @@
+import { Button, Input, Tabs, Textarea } from "@usememos/ui";
 import { BookAIcon, DownloadIcon, PencilIcon, Trash2Icon, UploadIcon, Volume2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { isTypingTarget } from "@/lib/hotkeys";
 import { getUserTimezone } from "@/lib/timezone";
+import { showErrorToast, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   createVocabCard,
@@ -200,7 +197,7 @@ const Vocab = () => {
       setIndex(0);
       setRevealed(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.loadFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.loadFailed"));
     }
   }, [t]);
 
@@ -209,7 +206,7 @@ const Vocab = () => {
     try {
       setCards(await listVocabCards({ q: query, filter, sort, limit: 200 }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.loadFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.loadFailed"));
     } finally {
       setLoadingLibrary(false);
     }
@@ -254,7 +251,7 @@ const Vocab = () => {
         setRevealed(false);
         await refreshStats();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("vocab.reviewFailed"));
+        showErrorToast(error instanceof Error ? error.message : t("vocab.reviewFailed"));
       } finally {
         setReviewing(false);
       }
@@ -318,17 +315,17 @@ const Vocab = () => {
 
   const saveCard = async () => {
     if (!form.term.trim() || !form.definition.trim()) {
-      toast.error(t("vocab.required"));
+      showErrorToast(t("vocab.required"));
       return;
     }
     setSaving(true);
     try {
       if (editingUid) {
         await updateVocabCard(editingUid, form);
-        toast.success(t("vocab.saved"));
+        toast.add({ title: t("vocab.saved"), type: "success" });
       } else {
         await createVocabCard(form);
-        toast.success(t("vocab.saved"));
+        toast.add({ title: t("vocab.saved"), type: "success" });
       }
       setForm(emptyForm());
       setEditingUid(undefined);
@@ -337,9 +334,9 @@ const Vocab = () => {
       setTab("library");
     } catch (error) {
       if (error instanceof VocabExistsError) {
-        toast.error(t("vocab.exists"));
+        showErrorToast(t("vocab.exists"));
       } else {
-        toast.error(error instanceof Error ? error.message : t("vocab.saveFailed"));
+        showErrorToast(error instanceof Error ? error.message : t("vocab.saveFailed"));
       }
     } finally {
       setSaving(false);
@@ -367,7 +364,7 @@ const Vocab = () => {
       setCards((prev) => prev.filter((item) => item.uid !== card.uid));
       await refreshStats();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.deleteFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.deleteFailed"));
     }
   };
 
@@ -384,9 +381,9 @@ const Vocab = () => {
         example: prev.example || result.example,
         notes: prev.notes || result.notes,
       }));
-      toast.success(result.source === "llm" ? t("vocab.lookupLLMSource") : t("vocab.lookupDictionarySource"));
+      toast.add({ title: result.source === "llm" ? t("vocab.lookupLLMSource") : t("vocab.lookupDictionarySource"), type: "success" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.lookupFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.lookupFailed"));
     } finally {
       setLookingUp(false);
     }
@@ -395,7 +392,7 @@ const Vocab = () => {
   const persistSettings = async (clearApiKey = false) => {
     const enabled = clearApiKey ? false : settingsForm.enabled;
     if (enabled && (!settingsForm.baseUrl.trim() || !settingsForm.model.trim() || (!settingsForm.apiKey.trim() && !settings?.configured))) {
-      toast.error(t("vocab.llmRequired"));
+      showErrorToast(t("vocab.llmRequired"));
       return;
     }
     setSavingSettings(true);
@@ -416,9 +413,9 @@ const Vocab = () => {
         prompt: next.prompt,
         apiKey: "",
       });
-      toast.success(t("vocab.llmSaved"));
+      toast.add({ title: t("vocab.llmSaved"), type: "success" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.llmSaveFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.llmSaveFailed"));
     } finally {
       setSavingSettings(false);
     }
@@ -434,7 +431,7 @@ const Vocab = () => {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.exportFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.exportFailed"));
     }
   };
 
@@ -442,11 +439,11 @@ const Vocab = () => {
     if (!file) return;
     try {
       const imported = await importVocabCsv(await file.text());
-      toast.success(t("vocab.imported", { count: imported }));
+      toast.add({ title: t("vocab.imported", { count: imported }), type: "success" });
       await refreshStats();
       await refreshLibrary();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("vocab.importFailed"));
+      showErrorToast(error instanceof Error ? error.message : t("vocab.importFailed"));
     }
   };
 
@@ -468,7 +465,7 @@ const Vocab = () => {
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="sm"
         className="shrink-0"
         disabled={busy}
         aria-label={t("vocab.playAudio")}
@@ -495,10 +492,10 @@ const Vocab = () => {
               <h1 className="text-xl font-semibold">{t("common.vocab")}</h1>
               <div className="ml-auto flex items-center gap-1 text-xs">
                 <span className="text-muted-foreground mr-1">{t("vocab.accent")}</span>
-                <Button type="button" size="sm" variant={accent === "us" ? "default" : "outline"} onClick={() => changeAccent("us")}>
+                <Button type="button" size="sm" variant={accent === "us" ? "primary" : "neutral"} onClick={() => changeAccent("us")}>
                   {t("vocab.accentUS")}
                 </Button>
-                <Button type="button" size="sm" variant={accent === "uk" ? "default" : "outline"} onClick={() => changeAccent("uk")}>
+                <Button type="button" size="sm" variant={accent === "uk" ? "primary" : "neutral"} onClick={() => changeAccent("uk")}>
                   {t("vocab.accentUK")}
                 </Button>
               </div>
@@ -508,14 +505,14 @@ const Vocab = () => {
               <span>{t("vocab.newCount", { count: stats.new })}</span>
               <span>{t("vocab.totalCount", { count: stats.total })}</span>
             </div>
-            <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-              <TabsList>
-                <TabsTrigger value="review">{t("vocab.review")}</TabsTrigger>
-                <TabsTrigger value="library">{t("vocab.library")}</TabsTrigger>
-                <TabsTrigger value="add">{editingUid ? t("vocab.edit") : t("vocab.add")}</TabsTrigger>
-                <TabsTrigger value="settings">{t("vocab.settings")}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <Tabs.Root value={tab} onValueChange={(value) => setTab(value as Tab)}>
+              <Tabs.List>
+                <Tabs.Tab value="review">{t("vocab.review")}</Tabs.Tab>
+                <Tabs.Tab value="library">{t("vocab.library")}</Tabs.Tab>
+                <Tabs.Tab value="add">{editingUid ? t("vocab.edit") : t("vocab.add")}</Tabs.Tab>
+                <Tabs.Tab value="settings">{t("vocab.settings")}</Tabs.Tab>
+              </Tabs.List>
+            </Tabs.Root>
             <p className="text-xs text-muted-foreground">{t("vocab.tabShortcutHint")}</p>
           </div>
 
@@ -580,10 +577,10 @@ const Vocab = () => {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vocab.search")} />
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => void refreshLibrary()}>
+                  <Button variant="neutral" onClick={() => void refreshLibrary()}>
                     {t("vocab.search")}
                   </Button>
-                  <Button variant="outline" onClick={() => void exportCsv()}>
+                  <Button variant="neutral" onClick={() => void exportCsv()}>
                     <DownloadIcon className="size-4" />
                     {t("vocab.exportCsv")}
                   </Button>
@@ -595,7 +592,7 @@ const Vocab = () => {
                       onChange={(event) => void importCsv(event.target.files?.[0])}
                     />
                     <Button
-                      variant="outline"
+                      variant="neutral"
                       type="button"
                       onClick={(event) => (event.currentTarget.previousElementSibling as HTMLInputElement | null)?.click()}
                     >
@@ -616,7 +613,7 @@ const Vocab = () => {
                   <Button
                     key={item.value || "all"}
                     size="sm"
-                    variant={filter === item.value ? "default" : "outline"}
+                    variant={filter === item.value ? "primary" : "neutral"}
                     onClick={() => setFilter(item.value)}
                   >
                     {item.label}
@@ -657,10 +654,10 @@ const Vocab = () => {
                         </div>
                       </div>
                       <div className="flex shrink-0">
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(card)} aria-label={t("vocab.edit")}>
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(card)} aria-label={t("vocab.edit")}>
                           <PencilIcon className="size-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => void removeCard(card)} aria-label={t("vocab.delete")}>
+                        <Button variant="ghost" size="sm" onClick={() => void removeCard(card)} aria-label={t("vocab.delete")}>
                           <Trash2Icon className="size-4" />
                         </Button>
                       </div>
@@ -686,7 +683,7 @@ const Vocab = () => {
                   }}
                 />
                 <PronounceButton term={form.term ?? ""} audioUrl={lookupAudioUrl} />
-                <Button variant="outline" disabled={lookingUp} onClick={() => void lookup()}>
+                <Button variant="neutral" disabled={lookingUp} onClick={() => void lookup()}>
                   {lookingUp
                     ? t("vocab.lookupInProgress")
                     : settings?.enabled && settings.configured
@@ -723,7 +720,7 @@ const Vocab = () => {
                 </Button>
                 {editingUid && (
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     onClick={() => {
                       setEditingUid(undefined);
                       setLookupAudioUrl("");
@@ -786,7 +783,7 @@ const Vocab = () => {
                   {t("vocab.llmSave")}
                 </Button>
                 {settings?.configured && (
-                  <Button variant="outline" disabled={savingSettings} onClick={() => void persistSettings(true)}>
+                  <Button variant="neutral" disabled={savingSettings} onClick={() => void persistSettings(true)}>
                     {t("vocab.llmClearKey")}
                   </Button>
                 )}

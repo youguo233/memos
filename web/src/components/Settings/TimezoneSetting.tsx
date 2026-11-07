@@ -1,8 +1,7 @@
+import { Input, Select } from "@usememos/ui";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { browserTimeZone, listTimeZones } from "@/lib/timezone";
+import { showErrorToast } from "@/lib/toast";
 import { useTranslate } from "@/utils/i18n";
 import { SettingListItem } from "./SettingList";
 
@@ -31,7 +30,7 @@ const TimezoneSetting = ({ value, disabled, onChange }: Props) => {
   const commit = (zone: string) => {
     const tz = zone.trim();
     if (!zones.includes(tz)) {
-      toast.error(t("setting.preference.timezone-invalid"));
+      showErrorToast(t("setting.preference.timezone-invalid"));
       return;
     }
     if (tz !== value) onChange(tz);
@@ -43,10 +42,12 @@ const TimezoneSetting = ({ value, disabled, onChange }: Props) => {
         label={t("setting.preference.timezone")}
         description={t("setting.preference.timezone-description", { zone: browserTimeZone() })}
       >
-        <Select
+        <Select.Root
           value={mode}
           items={modeItems}
+          disabled={disabled}
           onValueChange={(next) => {
+            if (next === null) return;
             const m = next as "system" | "custom";
             setMode(m);
             if (m === "system") {
@@ -56,17 +57,17 @@ const TimezoneSetting = ({ value, disabled, onChange }: Props) => {
             }
           }}
         >
-          <SelectTrigger className="min-w-fit" disabled={disabled}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
+          <Select.Trigger className="min-w-fit">
+            <Select.Value />
+          </Select.Trigger>
+          <Select.Popup>
             {modeItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
+              <Select.Item key={item.value} value={item.value}>
                 {item.label}
-              </SelectItem>
+              </Select.Item>
             ))}
-          </SelectContent>
-        </Select>
+          </Select.Popup>
+        </Select.Root>
       </SettingListItem>
       {mode === "custom" && (
         <SettingListItem label={t("setting.preference.timezone-custom")} description={t("setting.preference.timezone-search")}>

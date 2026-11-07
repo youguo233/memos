@@ -106,6 +106,8 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	frontendService := frontend.NewFrontendService(profile, store)
 	frontendService.Serve(ctx, mux, apiHandler)
 	fileServerService := fileserver.NewFileServerService(s.Profile, s.Store, s.Secret)
+	fileServerService.MemoExporter = apiService
+	fileServerService.RateLimiter = apiService.RateLimiter
 	fileServerService.RegisterRoutes(mux, apiHandler)
 	memodocx.NewService(s.Store, s.Profile.Data, s.Secret).RegisterRoutes(mux, apiHandler)
 	// Preserve unclean-path routing without ServeMux's automatic redirects.

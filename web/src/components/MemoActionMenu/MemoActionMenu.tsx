@@ -1,3 +1,5 @@
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { Button, Menu, menuClasses, Tooltip } from "@usememos/ui";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -16,25 +18,13 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
-import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/error";
 import { exportMemoDocx, exportMemoMarkdown } from "@/lib/memo-docx";
 import { memoSelection } from "@/lib/memo-selection";
+import { showErrorToast } from "@/lib/toast";
 import { State } from "@/types/proto/api/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { createMemoNavigationState } from "../MemoView/navigation";
@@ -48,6 +38,9 @@ import type { MemoActionMenuProps } from "./types";
  * A memo's Space is changed in the editor, not here. An archived memo offers
  * only Restore and Delete, and a viewer only Open and Copy.
  */
+/** The open link is a real link, so its row takes the package's menu row classes. */
+const MENU_ROW_CLASSES = menuClasses({ size: "sm" });
+
 const MemoActionMenu = (props: MemoActionMenuProps) => {
   const { memo, parentPage, readonly } = props;
   const t = useTranslate();
@@ -83,41 +76,23 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
 
   // A comment opens in the context of its parent memo, never on its own.
   const openItem = !isComment && !isInMemoDetailPage && (
-    <DropdownMenuLinkItem
+    <MenuPrimitive.LinkItem
       closeOnClick
+      className={MENU_ROW_CLASSES.item}
       render={
         <Link to={`/${memo.name}`} state={parentPage !== undefined ? createMemoNavigationState(parentPage) : undefined} viewTransition />
       }
     >
-      <ArrowUpRightIcon />
-      {t("common.open")}
-    </DropdownMenuLinkItem>
-  );
-
-  const copySubmenu = (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <CopyIcon />
-        {t("common.copy")}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-        <DropdownMenuItem onClick={handleCopyLink}>
-          <LinkIcon />
-          {t("memo.copy-link")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyContent}>
-          <FileTextIcon />
-          {t("memo.copy-content")}
-        </DropdownMenuItem>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+      <ArrowUpRightIcon className="mu-icon" />
+      <span className={MENU_ROW_CLASSES.label}>{t("common.open")}</span>
+    </MenuPrimitive.LinkItem>
   );
 
   const handleExportDocx = async () => {
     try {
       await exportMemoDocx(memo.name, userGeneralSetting?.timezone);
     } catch (error) {
-      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+      showErrorToast(getErrorMessage(error, t("memo.export-docx-failed")));
     }
   };
 
@@ -125,34 +100,44 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     try {
       await exportMemoMarkdown(memo.name, userGeneralSetting?.timezone);
     } catch (error) {
-      toast.error(getErrorMessage(error, t("memo.export-docx-failed")));
+      showErrorToast(getErrorMessage(error, t("memo.export-docx-failed")));
     }
   };
 
-  const exportDocxItem = (
+  const exportItems = (
     <>
-      <DropdownMenuItem onClick={handleExportDocx}>
-        <FileDownIcon />
+      <Menu.Item onClick={handleExportDocx} icon={<FileDownIcon />}>
         {t("memo.export-docx")}
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={handleExportMarkdown}>
-        <FileDownIcon />
+      </Menu.Item>
+      <Menu.Item onClick={handleExportMarkdown} icon={<FileTextIcon />}>
         {t("memo.export-markdown")}
-      </DropdownMenuItem>
+      </Menu.Item>
       {!isComment && (
-        <DropdownMenuItem onClick={() => memoSelection.start(memo.name)}>
-          <CheckSquareIcon />
+        <Menu.Item onClick={() => memoSelection.start(memo.name)} icon={<CheckSquareIcon />}>
           {t("memo.batch-export.select")}
-        </DropdownMenuItem>
+        </Menu.Item>
       )}
     </>
   );
 
+  const copySubmenu = (
+    <Menu.SubmenuRoot>
+      <Menu.SubmenuTrigger icon={<CopyIcon />}>{t("common.copy")}</Menu.SubmenuTrigger>
+      <Menu.Popup>
+        <Menu.Item onClick={handleCopyLink} icon={<LinkIcon />}>
+          {t("memo.copy-link")}
+        </Menu.Item>
+        <Menu.Item onClick={handleCopyContent} icon={<FileTextIcon />}>
+          {t("memo.copy-content")}
+        </Menu.Item>
+      </Menu.Popup>
+    </Menu.SubmenuRoot>
+  );
+
   const deleteItem = (
-    <DropdownMenuItem variant="destructive" onClick={handleDeleteMemoClick}>
-      <TrashIcon />
+    <Menu.Item onClick={handleDeleteMemoClick} icon={<TrashIcon />} danger>
       {t("common.delete")}
-    </DropdownMenuItem>
+    </Menu.Item>
   );
 
   const renderItems = () => {
@@ -161,7 +146,7 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         <>
           {openItem}
           {copySubmenu}
-          {exportDocxItem}
+          {exportItems}
         </>
       );
     }
@@ -169,11 +154,10 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     if (isArchived) {
       return (
         <>
-          <DropdownMenuItem onClick={handleToggleMemoStatusClick}>
-            <ArchiveRestoreIcon />
+          <Menu.Item onClick={handleToggleMemoStatusClick} icon={<ArchiveRestoreIcon />}>
             {t("common.restore")}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          </Menu.Item>
+          <Menu.Separator />
           {deleteItem}
         </>
       );
@@ -181,58 +165,54 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
 
     return (
       <>
-        <DropdownMenuItem onClick={handleEditMemoClick}>
-          <Edit3Icon />
+        <Menu.Item onClick={handleEditMemoClick} icon={<Edit3Icon />}>
           {t("common.edit")}
-        </DropdownMenuItem>
+        </Menu.Item>
         {/* One task action at a time: finish the open tasks, or reset a finished list. */}
         {hasTaskList &&
           (hasOpenTasks ? (
-            <DropdownMenuItem onClick={handleCheckAllTaskListItemsClick}>
-              <CheckCheckIcon />
+            <Menu.Item onClick={handleCheckAllTaskListItemsClick} icon={<CheckCheckIcon />}>
               {t("memo.task-actions.check-all")}
-            </DropdownMenuItem>
+            </Menu.Item>
           ) : (
-            <DropdownMenuItem onClick={handleUncheckAllTaskListItemsClick}>
-              <ListRestartIcon />
+            <Menu.Item onClick={handleUncheckAllTaskListItemsClick} icon={<ListRestartIcon />}>
               {t("memo.task-actions.uncheck-all")}
-            </DropdownMenuItem>
+            </Menu.Item>
           ))}
 
         {/* A comment has no place of its own to pin or archive; it lives under its parent. */}
         {!isComment && (
           <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleTogglePinMemoBtnClick}>
-              {memo.pinned ? <BookmarkMinusIcon /> : <BookmarkPlusIcon />}
+            <Menu.Separator />
+            <Menu.Item onClick={handleTogglePinMemoBtnClick} icon={memo.pinned ? <BookmarkMinusIcon /> : <BookmarkPlusIcon />}>
               {memo.pinned ? t("common.unpin") : t("common.pin")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleMemoStatusClick}>
-              <ArchiveIcon />
+            </Menu.Item>
+            <Menu.Item onClick={handleToggleMemoStatusClick} icon={<ArchiveIcon />}>
               {t("common.archive")}
-            </DropdownMenuItem>
+            </Menu.Item>
           </>
         )}
 
-        <DropdownMenuSeparator />
+        <Menu.Separator />
         {openItem}
         {copySubmenu}
-        {exportDocxItem}
+        {exportItems}
 
-        <DropdownMenuSeparator />
+        <Menu.Separator />
         {deleteItem}
       </>
     );
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="quiet" size="icon-sm" aria-label={t("common.more")} />}>
-        <MoreVerticalIcon className="size-4" strokeWidth={1.8} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={2} size="sm">
-        {renderItems()}
-      </DropdownMenuContent>
+    <Menu.Root modal={false} size="sm">
+      <Tooltip.Root>
+        <Tooltip.Trigger
+          render={<Menu.Trigger render={<Button variant="ghost" size="sm" aria-label={t("common.more")} icon={<MoreVerticalIcon />} />} />}
+        />
+        <Tooltip.Popup>{t("common.more")}</Tooltip.Popup>
+      </Tooltip.Root>
+      <Menu.Popup align="end">{renderItems()}</Menu.Popup>
 
       {/* Delete confirmation dialog */}
       <ConfirmDialog
@@ -243,9 +223,9 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         description={t("memo.delete-confirm-description")}
         cancelLabel={t("common.cancel")}
         onConfirm={confirmDeleteMemo}
-        confirmVariant="destructive"
+        confirmVariant="danger"
       />
-    </DropdownMenu>
+    </Menu.Root>
   );
 };
 

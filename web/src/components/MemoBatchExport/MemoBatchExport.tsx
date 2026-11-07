@@ -1,24 +1,12 @@
+import { Button, Menu, Tooltip } from "@usememos/ui";
 import { CheckSquareIcon, DownloadIcon, FileArchiveIcon, FileDownIcon, XIcon } from "lucide-react";
 import { useState } from "react";
-import toast from "react-hot-toast";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/error";
 import { type BatchExportFormat, exportMemosBatch } from "@/lib/memo-docx";
 import { memoSelection, useMemoSelection } from "@/lib/memo-selection";
+import { showErrorToast } from "@/lib/toast";
 import { useTranslate } from "@/utils/i18n";
-
-const ICON_BUTTON = "size-7 shrink-0 px-0 text-muted-foreground hover:text-foreground";
 
 type Choice = { format: BatchExportFormat; merge: boolean; label: string; icon: typeof FileDownIcon };
 
@@ -42,7 +30,7 @@ function useRunExport() {
       await exportMemosBatch(target, choice.format, { merge: choice.merge, tz: userGeneralSetting?.timezone });
       return true;
     } catch (error) {
-      toast.error(getErrorMessage(error, t("memo.batch-export.failed")));
+      showErrorToast(getErrorMessage(error, t("memo.batch-export.failed")));
       return false;
     } finally {
       setBusy(false);
@@ -61,38 +49,32 @@ export const MemoBatchExportButton = ({ tag }: { tag?: string }) => {
   const { busy, run } = useRunExport();
   const label = t("memo.batch-export.title");
   return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <DropdownMenuTrigger render={<Button variant="quiet" size="sm" className={ICON_BUTTON} disabled={busy} aria-label={label} />} />
-          }
-        >
-          <DownloadIcon className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent align="end" className="w-60">
+    <Menu.Root modal={false} size="sm">
+      <Tooltip.Root>
+        <Tooltip.Trigger
+          render={<Menu.Trigger render={<Button variant="ghost" size="sm" disabled={busy} aria-label={label} icon={<DownloadIcon />} />} />}
+        />
+        <Tooltip.Popup>{label}</Tooltip.Popup>
+      </Tooltip.Root>
+      <Menu.Popup align="end" className="w-60">
         {tag && (
           <>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{t("memo.batch-export.tag-heading", { tag })}</DropdownMenuLabel>
-              {choices.map((c) => (
-                <DropdownMenuItem key={c.format + c.merge} onClick={() => run({ tag }, c)}>
-                  <c.icon />
-                  {c.label}
-                </DropdownMenuItem>
+            <Menu.Group>
+              <Menu.GroupLabel>{t("memo.batch-export.tag-heading", { tag })}</Menu.GroupLabel>
+              {choices.map((choice) => (
+                <Menu.Item key={choice.format + String(choice.merge)} onClick={() => run({ tag }, choice)} icon={<choice.icon />}>
+                  {choice.label}
+                </Menu.Item>
               ))}
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            </Menu.Group>
+            <Menu.Separator />
           </>
         )}
-        <DropdownMenuItem onClick={() => memoSelection.start()}>
-          <CheckSquareIcon />
+        <Menu.Item onClick={() => memoSelection.start()} icon={<CheckSquareIcon />}>
           {t("memo.batch-export.select")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </Menu.Item>
+      </Menu.Popup>
+    </Menu.Root>
   );
 };
 
@@ -105,33 +87,30 @@ export const MemoSelectionBar = () => {
   const visibleCount = useMemoSelection((s) => s.visible.length);
   const allSelected = visibleCount > 0 && selected.size >= visibleCount;
   return (
-    <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-1 text-sm text-muted-foreground">
+    <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-1 text-sm text-mu-ink-muted">
       <span className="me-auto tabular-nums">{t("memo.batch-export.selected-count", { count: selected.size })}</span>
-      <Button variant="quiet" size="sm" onClick={() => (allSelected ? memoSelection.clear() : memoSelection.selectAll())}>
+      <Button variant="ghost" size="sm" onClick={() => (allSelected ? memoSelection.clear() : memoSelection.selectAll())}>
         {allSelected ? t("memo.batch-export.select-none") : t("memo.batch-export.select-all")}
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="quiet" size="sm" className="gap-1" disabled={busy || selected.size === 0} />}>
-          <DownloadIcon className="size-4" />
+      <Menu.Root modal={false} size="sm">
+        <Menu.Trigger render={<Button variant="ghost" size="sm" disabled={busy || selected.size === 0} icon={<DownloadIcon />} />}>
           {t("memo.batch-export.export")}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-60">
-          {choices.map((c) => (
-            <DropdownMenuItem
-              key={c.format + c.merge}
+        </Menu.Trigger>
+        <Menu.Popup align="end" className="w-60">
+          {choices.map((choice) => (
+            <Menu.Item
+              key={choice.format + String(choice.merge)}
               onClick={async () => {
-                if (await run({ names: [...selected] }, c)) memoSelection.exit();
+                if (await run({ names: [...selected] }, choice)) memoSelection.exit();
               }}
+              icon={<choice.icon />}
             >
-              <c.icon />
-              {c.label}
-            </DropdownMenuItem>
+              {choice.label}
+            </Menu.Item>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Button variant="quiet" size="sm" className={ICON_BUTTON} onClick={() => memoSelection.exit()} aria-label={t("common.cancel")}>
-        <XIcon className="size-4" />
-      </Button>
+        </Menu.Popup>
+      </Menu.Root>
+      <Button variant="ghost" size="sm" onClick={() => memoSelection.exit()} aria-label={t("common.cancel")} icon={<XIcon />} />
     </div>
   );
 };

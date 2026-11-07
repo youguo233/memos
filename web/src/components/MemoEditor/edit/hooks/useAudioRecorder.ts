@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { zdayjs } from "@/lib/timezone";
+import { useTranslate } from "@/utils/i18n";
 import type { LocalFile } from "../types/attachment";
 import { useBlobUrls } from "./useBlobUrls";
 
@@ -36,7 +37,6 @@ function getFileExtension(mimeType: string): string {
 
 function createRecordedFile(blob: Blob, mimeType: string): File {
   const extension = getFileExtension(mimeType);
-  // Named by the wall clock of the preferred zone.
   const stamp = zdayjs().format("YYYYMMDD-HHmmss");
   return new File([blob], `voice-note-${stamp}.${extension}`, { type: mimeType });
 }
@@ -50,6 +50,7 @@ function createRecordedFile(blob: Blob, mimeType: string): File {
  * caller.
  */
 export const useAudioRecorder = (options: UseAudioRecorderOptions) => {
+  const t = useTranslate();
   const [status, setStatus] = useState<AudioRecorderStatus>("idle");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -101,7 +102,7 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions) => {
 
     if (!isSupported) {
       setStatus("unsupported");
-      setError("Audio recording is not supported in this browser.");
+      setError(t("editor.recording-unsupported"));
       return;
     }
 
@@ -125,7 +126,7 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions) => {
       typeof MediaRecorder === "undefined"
     ) {
       setStatus("unsupported");
-      setError("Audio recording is not supported in this browser.");
+      setError(t("editor.recording-unsupported"));
       return;
     }
 
@@ -215,7 +216,7 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions) => {
         error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError");
 
       setStatus("error");
-      setError(permissionDenied ? "Microphone permission was denied." : "Failed to start audio recording.");
+      setError(permissionDenied ? t("editor.microphone-denied") : t("editor.recording-failed"));
       resetRecorderRefs();
     }
   };

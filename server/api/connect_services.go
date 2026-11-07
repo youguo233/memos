@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	apipb "github.com/usememos/memos/proto/gen/api"
@@ -58,6 +57,14 @@ func (s *ConnectServiceHandler) TestInstanceEmailSetting(ctx context.Context, re
 
 func (s *ConnectServiceHandler) GetInstanceStats(ctx context.Context, req *connect.Request[apipb.GetInstanceStatsRequest]) (*connect.Response[apipb.InstanceStats], error) {
 	resp, err := s.APIService.GetInstanceStats(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetConfigurationStatus(ctx context.Context, req *connect.Request[apipb.GetConfigurationStatusRequest]) (*connect.Response[apipb.ConfigurationStatus], error) {
+	resp, err := s.APIService.GetConfigurationStatus(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}
@@ -160,14 +167,6 @@ func (s *ConnectServiceHandler) GetUserStats(ctx context.Context, req *connect.R
 
 func (s *ConnectServiceHandler) GetUserUsage(ctx context.Context, req *connect.Request[apipb.GetUserUsageRequest]) (*connect.Response[apipb.UserUsage], error) {
 	resp, err := s.APIService.GetUserUsage(ctx, req.Msg)
-	if err != nil {
-		return nil, convertGRPCError(err)
-	}
-	return connect.NewResponse(resp), nil
-}
-
-func (s *ConnectServiceHandler) ExportMemos(ctx context.Context, req *connect.Request[apipb.ExportMemosRequest]) (*connect.Response[httpbody.HttpBody], error) {
-	resp, err := s.APIService.ExportMemos(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

@@ -7,11 +7,11 @@ import {
   isPlainTextBlock,
   isTextBlock,
   type Labels,
-  type MarkdownOptions,
   math,
   mentions,
   parseMarkdown,
   type ResolveUrl,
+  type SanitizeHtml,
   type Span,
   type SyntaxView,
   scanMentions,
@@ -24,20 +24,13 @@ import {
 import { highlightLoadedCode, loadHighlighter } from "@/lib/code-highlight";
 import { colorToHex } from "@/lib/color";
 import { headingClasses, markdownStyles, mentionStyles, tagStyles } from "@/lib/markdownStyles";
+import { MEMO_MARKDOWN, MEMO_SYNTAX } from "@/lib/memo-ast";
 import { findTagMetadata } from "@/lib/tag";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/attachment_service_pb";
 import type { UserSetting_TagsSetting } from "@/types/proto/api/user_service_pb";
 import type { useTranslate } from "@/utils/i18n";
 import { resolveManagedAttachmentImageSource } from "@/utils/managed-attachment";
-
-/**
- * The memo Markdown dialect, shared by the composer and the read-only memo view
- * so a memo reads the same while editing and after saving: a single newline is
- * a line break, and setext headings are off, so a line
- * followed by `---` stays a paragraph and a divider.
- */
-export const MEMO_MARKDOWN: MarkdownOptions = { breaks: true, setext: false };
 
 type KatexModule = typeof import("katex").default;
 
@@ -126,18 +119,18 @@ const renderDiagram: SyntaxView = (source, element) => {
   })();
 };
 
-type HtmlRenderer = typeof import("@/lib/sanitized-html").renderSanitizedHtml;
-let htmlRenderer: HtmlRenderer | null = null;
-let htmlRendererPromise: Promise<HtmlRenderer> | null = null;
+type HtmlSanitizer = typeof import("@/lib/sanitized-html").sanitizeMemoHtml;
+let htmlSanitizer: HtmlSanitizer | null = null;
+let htmlSanitizerPromise: Promise<HtmlSanitizer> | null = null;
 
 /** Raw HTML (`<details>`, `<kbd>`, trusted embeds) through memos' sanitizer, loaded the first time it is needed. */
-const renderHtml: SyntaxView = (source, element, kind) => {
-  if (htmlRenderer) return htmlRenderer(source, element, kind);
-  htmlRendererPromise ??= import("@/lib/sanitized-html").then((module) => {
-    htmlRenderer = module.renderSanitizedHtml;
-    return htmlRenderer;
+export const memoSanitizeHtml: SanitizeHtml = (tree) => {
+  if (htmlSanitizer) return htmlSanitizer(tree);
+  htmlSanitizerPromise ??= import("@/lib/sanitized-html").then((module) => {
+    htmlSanitizer = module.sanitizeMemoHtml;
+    return htmlSanitizer;
   });
-  return htmlRendererPromise.then((render) => render(source, element, kind));
+  return htmlSanitizerPromise.then((sanitize) => sanitize(tree));
 };
 
 /** A tag's custom color from the user's tag settings, as a hex value, or undefined for the theme color. */
@@ -193,8 +186,9 @@ interface MemoExtensionOptions {
 /**
  * The extensions every memo surface reads with, the composer and the memo view
  * alike: math (KaTeX, loaded on demand), footnotes, #tags and @mentions,
- * highlighted code, Mermaid diagrams (drawn by Pele) and sanitized raw HTML.
- * Everything the editor renders shows its source at the caret while editing.
+ * highlighted code and Mermaid diagrams (drawn by Pele). Raw HTML is the
+ * editor's `sanitizeHtml` option, memoSanitizeHtml. Everything the editor
+ * renders shows its source at the caret while editing.
  */
 export const memoExtensions = (options: MemoExtensionOptions = {}): Extension[] => [
   math({ render: renderMath }),
@@ -202,7 +196,7 @@ export const memoExtensions = (options: MemoExtensionOptions = {}): Extension[] 
   tags(options.tags),
   mentions(options.mentions),
   codeHighlight(),
-  { name: "memoViews", views: { "code:mermaid": renderDiagram, html: renderHtml } },
+  { name: "memoViews", views: { "code:mermaid": renderDiagram } },
 ];
 
 /** Images load from relative URLs and https only, as memos' sanitizer allowed; anything else is dropped. */
@@ -224,36 +218,36 @@ export const memoResolveUrl =
   };
 
 /**
- * The editor's look in memos' palette. Every color is one of the app's own CSS
- * variables, set once for both schemes (`colors`), since the variables already
- * follow the active memos theme; `inherit` follows the `color-scheme` memos sets
+ * The editor's look on @usememos/ui's tokens. Every color is one of the package's
+ * CSS variables, set once for both schemes (`colors`), since the variables already
+ * follow the active memos theme; `inherit` follows the `color-scheme` the theme sets
  * on the document. No `highlight` token: memos' HTML sanitizer drops `<mark>`, and
  * should it ever pass, the editor's yellow is what a highlighter means, where a
  * tint of the primary color would read as a tag pill or a selection.
  */
 export const MEMO_EDITOR_THEME: Theme = (() => {
   const colors = {
-    text: "var(--foreground)",
-    muted: "var(--muted-foreground)",
+    text: "var(--mu-ink)",
+    muted: "var(--mu-ink-muted)",
     background: "transparent",
-    accent: "var(--primary)",
-    link: "var(--primary)",
-    codeBackground: "var(--muted)",
-    border: "var(--border)",
-    popupBackground: "var(--popover)",
-    popupBorder: "var(--border)",
-    hover: "var(--accent)",
-    danger: "var(--destructive)",
+    accent: "var(--mu-accent)",
+    link: "var(--mu-accent)",
+    codeBackground: "var(--mu-well)",
+    border: "var(--mu-line)",
+    popupBackground: "var(--mu-surface)",
+    popupBorder: "var(--mu-line)",
+    hover: "var(--mu-hover)",
+    danger: "var(--mu-danger)",
   };
   return {
     colorScheme: "inherit",
     tokens: {
       colors,
       font: "inherit",
-      mono: "var(--font-mono, ui-monospace, monospace)",
+      mono: "var(--mu-font-mono)",
       fontSize: 16,
       lineHeight: 24,
-      radius: "calc(var(--radius) - 2px)",
+      radius: "var(--mu-radius-md)",
       blockGap: 8,
     },
     classes: {
@@ -261,7 +255,7 @@ export const MEMO_EDITOR_THEME: Theme = (() => {
       code: markdownStyles.inlineCode,
       link: markdownStyles.link,
       // The editor sizes and spaces its images; raw HTML images keep markdownStyles.image.
-      image: "rounded-lg",
+      image: "rounded-mu-lg",
     },
   };
 })();
@@ -380,9 +374,6 @@ const collectMatches = (blocks: readonly Block[], scan: TagScanner): string[] =>
 
 /** Tags written in a document, as highlighted: `#work/project` gives `work/project`. */
 export const collectTags = (blocks: readonly Block[]): string[] => collectMatches(blocks, scanTags);
-
-// The syntax the memo extensions add (math, footnotes, and the escapes of tags and mentions), for parsing outside an editor.
-const MEMO_SYNTAX = memoExtensions().flatMap((extension) => (extension.markdown ? [extension.markdown] : []));
 
 /** Parses a memo the way the composer and the memo view read it. */
 export const parseMemoMarkdown = (markdown: string): Doc => parseMarkdown(markdown, { ...MEMO_MARKDOWN, syntax: MEMO_SYNTAX });

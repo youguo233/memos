@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/usememos/memos/internal/imagelimit"
 	"github.com/usememos/memos/internal/motionphoto"
 	"github.com/usememos/memos/internal/profile"
+	"github.com/usememos/memos/internal/ratelimit"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/provider/storage"
 	"github.com/usememos/memos/server/auth"
@@ -110,17 +112,25 @@ type FileServerService struct {
 	Store         *store.Store
 	authenticator *auth.Authenticator
 
+	// MemoExporter writes memo export archives; nil disables the export route.
+	MemoExporter MemoExporter
+	// RateLimiter bounds export requests; nil disables the limit.
+	RateLimiter ratelimit.Limiter
+
 	// thumbnailSemaphore limits concurrent thumbnail generation.
 	thumbnailSemaphore *semaphore.Weighted
+	// memoExportSemaphore admits one export at a time.
+	memoExportSemaphore *semaphore.Weighted
 }
 
 // NewFileServerService creates a new file server service.
 func NewFileServerService(profile *profile.Profile, store *store.Store, secret string) *FileServerService {
 	return &FileServerService{
-		Profile:            profile,
-		Store:              store,
-		authenticator:      auth.NewAuthenticator(store, secret),
-		thumbnailSemaphore: semaphore.NewWeighted(maxConcurrentThumbnails),
+		Profile:             profile,
+		Store:               store,
+		authenticator:       auth.NewAuthenticator(store, secret),
+		thumbnailSemaphore:  semaphore.NewWeighted(maxConcurrentThumbnails),
+		memoExportSemaphore: semaphore.NewWeighted(1),
 	}
 }
 
@@ -129,6 +139,9 @@ func (s *FileServerService) RegisterRoutes(mux *http.ServeMux, fallback http.Han
 	mux.Handle("/file/attachments/{uid}", httphandler.GET(httphandler.Func(s.serveAttachmentFile), fallback))
 	mux.Handle("/file/attachments/{uid}/{filename}", httphandler.GET(httphandler.Func(s.serveAttachmentFile), fallback))
 	mux.Handle("/file/users/{identifier}/avatar", httphandler.GET(httphandler.Func(s.serveUserAvatar), fallback))
+	// A method pattern so that HEAD is served too: the web client sends a HEAD
+	// preflight before it hands the download to the browser.
+	mux.Handle("GET "+memoExportRoute, httphandler.Func(s.serveMemoExport))
 }
 
 // =============================================================================
@@ -246,8 +259,7 @@ func (s *FileServerService) serveMediaStream(w http.ResponseWriter, r *http.Requ
 
 	switch attachment.StorageType {
 	case storepb.AttachmentStorageType_LOCAL:
-		http.ServeFile(w, r, s.resolveLocalPath(attachment.Reference))
-		return nil
+		return s.serveLocalFile(w, r, attachment)
 
 	case storepb.AttachmentStorageType_S3:
 		return s.streamS3Object(w, r, attachment, contentType)
@@ -285,8 +297,7 @@ func (s *FileServerService) serveStaticFile(w http.ResponseWriter, r *http.Reque
 
 	switch attachment.StorageType {
 	case storepb.AttachmentStorageType_LOCAL:
-		http.ServeFile(w, r, s.resolveLocalPath(attachment.Reference))
-		return nil
+		return s.serveLocalFile(w, r, attachment)
 	case storepb.AttachmentStorageType_S3:
 		return s.streamS3Object(w, r, attachment, contentType)
 	default:
@@ -349,6 +360,25 @@ func (s *FileServerService) resolveLocalPath(reference string) string {
 		filePath = filepath.Join(s.Profile.Data, filePath)
 	}
 	return filePath
+}
+
+// serveLocalFile serves an attachment stored on disk. A file that is gone
+// answers with the JSON error envelope like every other storage failure,
+// instead of the plain-text page net/http would write for it.
+func (s *FileServerService) serveLocalFile(w http.ResponseWriter, r *http.Request, attachment *store.Attachment) error {
+	path := s.resolveLocalPath(attachment.Reference)
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return &httphandler.Error{Code: http.StatusNotFound, Message: "attachment file not found", Cause: err}
+		}
+		return &httphandler.Error{Code: http.StatusInternalServerError, Message: "failed to read attachment file", Cause: err}
+	}
+	if info.IsDir() {
+		return &httphandler.Error{Code: http.StatusNotFound, Message: "attachment file not found"}
+	}
+	http.ServeFile(w, r, path)
+	return nil
 }
 
 // streamS3Object streams S3 content through the server, forwarding a supported

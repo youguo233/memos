@@ -2,20 +2,44 @@ import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { userServiceClient } from "@/connect";
 import { downloadFileFromUrl } from "@/lib/browser";
-import { zdayjs } from "@/lib/timezone";
 import type { ImportMemosPlan, ImportMemosReport, ImportMemosRequest } from "@/types/proto/api/user_service_pb";
 import { ImportMemosRequest_ConflictPolicy, ImportMemosSpecSchema } from "@/types/proto/api/user_service_pb";
 
 const DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024;
 
-// exportMemos downloads the user's Memos export file.
-export async function exportMemos(userName: string, username: string): Promise<void> {
-  const body = await userServiceClient.exportMemos({ name: userName });
-  const stamp = zdayjs().format("YYYYMMDDTHHmmss");
-  const url = URL.createObjectURL(new Blob([body.data as BlobPart], { type: body.contentType }));
-  downloadFileFromUrl(url, `memos-export-${username}-${stamp}.zip`);
-  // Give the browser a tick to start the download before revoking.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+// MemoExportError is a refused export preflight, carrying the HTTP status so
+// the caller can tell a busy server (429) from a denied request.
+export class MemoExportError extends Error {
+  constructor(readonly status: number) {
+    super(`Export refused with status ${status}`);
+    this.name = "MemoExportError";
+  }
+}
+
+export const memoExportUrl = (username: string) => `/file/users/${encodeURIComponent(username)}/export`;
+
+const filenameFromDisposition = (disposition: string | null): string | undefined => {
+  const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  if (!match) return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    // A plain filename may hold a literal percent sign; keep it as sent.
+    return match[1];
+  }
+};
+
+// exportMemos downloads a user's Memos export file. The archive streams from
+// the file server straight into the browser's download, so it is never held
+// in page memory. A HEAD preflight runs the server's checks first, so a
+// refusal arrives as an error instead of a downloaded error document.
+export async function exportMemos(username: string): Promise<void> {
+  const url = memoExportUrl(username);
+  const response = await fetch(url, { method: "HEAD", credentials: "same-origin" });
+  if (!response.ok) {
+    throw new MemoExportError(response.status);
+  }
+  downloadFileFromUrl(url, filenameFromDisposition(response.headers.get("Content-Disposition")) ?? `memos-export-${username}.zip`);
 }
 
 export interface StagedMemoImport {

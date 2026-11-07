@@ -1,12 +1,10 @@
 import { create } from "@bufbuild/protobuf";
+import { Button, Input, Switch } from "@usememos/ui";
 import { useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { instanceServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import { handleError } from "@/lib/error";
+import { showErrorToast, toast } from "@/lib/toast";
 import { InstanceSetting_CaptchaSettingSchema, InstanceSetting_Key, InstanceSettingSchema } from "@/types/proto/api/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import SettingGroup from "./SettingGroup";
@@ -34,12 +32,12 @@ const CaptchaSettingGroup = () => {
   };
 
   useEffect(() => {
-    load().catch((error: unknown) => handleError(error, toast.error, { context: "Load captcha setting" }));
+    load().catch((error: unknown) => handleError(error, showErrorToast, { context: "Load captcha setting" }));
   }, []);
 
   const handleSave = async () => {
     if (enabled && (!siteKey.trim() || (!secretKey.trim() && !secretHint))) {
-      toast.error(t("setting.captcha.keys-required"));
+      showErrorToast(t("setting.captcha.keys-required"));
       return;
     }
     setSaving(true);
@@ -56,9 +54,9 @@ const CaptchaSettingGroup = () => {
       setSecretKey("");
       await load();
       await initialize();
-      toast.success(t("message.update-succeed"));
+      toast.add({ title: t("message.update-succeed"), type: "success" });
     } catch (error: unknown) {
-      await handleError(error, toast.error, { context: "Update captcha setting" });
+      await handleError(error, showErrorToast, { context: "Update captcha setting" });
     }
     setSaving(false);
   };
