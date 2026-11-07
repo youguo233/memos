@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -11,11 +12,12 @@ import (
 
 	"github.com/usememos/memos/internal/random"
 	"github.com/usememos/memos/internal/vocabfsrs"
+	"github.com/usememos/memos/internal/vocablookup"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
 
-const vocabMarker = "mbe-vocab-v1"
+const vocabMarker = "mbe-vocab-v2"
 
 type vocabCardJSON struct {
 	UID          string                   `json:"uid"`
@@ -147,6 +149,9 @@ func normalizeTerm(term string) string {
 // RegisterVocabRoutes mounts the vocabulary notebook endpoints.
 func (s *APIService) RegisterVocabRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/vocab/stats", s.handleVocabStats)
+	mux.HandleFunc("GET /api/v1/vocab/settings", s.handleVocabGetSettings)
+	mux.HandleFunc("PUT /api/v1/vocab/settings", s.handleVocabPutSettings)
+	mux.HandleFunc("POST /api/v1/vocab/lookup", s.handleVocabLookup)
 	mux.HandleFunc("GET /api/v1/vocab/export", s.handleVocabExport)
 	mux.HandleFunc("POST /api/v1/vocab/import", s.handleVocabImport)
 	mux.HandleFunc("GET /api/v1/vocab/session", s.handleVocabSession)
@@ -522,4 +527,166 @@ func splitTags(raw string) []string {
 		}
 	}
 	return out
+}
+
+type vocabSettingsPayload struct {
+	Enabled     bool   `json:"enabled"`
+	BaseURL     string `json:"baseUrl"`
+	Model       string `json:"model"`
+	Prompt      string `json:"prompt"`
+	APIKey      string `json:"apiKey"`
+	ClearAPIKey bool   `json:"clearApiKey"`
+}
+
+func vocabSettingsJSON(st *store.VocabSetting) map[string]any {
+	if st == nil {
+		st = &store.VocabSetting{}
+	}
+	configured := strings.TrimSpace(st.APIKey) != "" && strings.TrimSpace(st.BaseURL) != "" && strings.TrimSpace(st.Model) != ""
+	return map[string]any{
+		"enabled":      st.Enabled,
+		"baseUrl":      st.BaseURL,
+		"model":        st.Model,
+		"prompt":       st.Prompt,
+		"apiKeyMasked": maskAPIKey(strings.TrimSpace(st.APIKey)),
+		"configured":   configured,
+	}
+}
+
+func (s *APIService) handleVocabGetSettings(w http.ResponseWriter, r *http.Request) {
+	user := s.vocabCurrentUser(r)
+	if user == nil {
+		jsonError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	st, err := s.Store.GetVocabSetting(r.Context(), user.ID)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "failed to load settings")
+		return
+	}
+	writeJSON(w, http.StatusOK, vocabSettingsJSON(st))
+}
+
+func (s *APIService) handleVocabPutSettings(w http.ResponseWriter, r *http.Request) {
+	user := s.vocabCurrentUser(r)
+	if user == nil {
+		jsonError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var payload vocabSettingsPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		jsonError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	st, err := s.Store.GetVocabSetting(r.Context(), user.ID)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "failed to load settings")
+		return
+	}
+	if st == nil {
+		st = &store.VocabSetting{CreatorID: user.ID}
+	}
+	baseURL := strings.TrimSpace(payload.BaseURL)
+	if baseURL != "" {
+		if _, err := vocablookup.NormalizeChatCompletionsURL(baseURL); err != nil {
+			jsonError(w, http.StatusBadRequest, "invalid API base URL")
+			return
+		}
+	}
+	if len(baseURL) > 1024 || len(payload.Model) > 256 || len(payload.Prompt) > 8000 || len(payload.APIKey) > 512 {
+		jsonError(w, http.StatusBadRequest, "settings fields are too long")
+		return
+	}
+	st.Enabled = payload.Enabled
+	st.BaseURL = baseURL
+	st.Model = strings.TrimSpace(payload.Model)
+	st.Prompt = strings.TrimSpace(payload.Prompt)
+	if payload.ClearAPIKey {
+		st.APIKey = ""
+	} else if strings.TrimSpace(payload.APIKey) != "" {
+		st.APIKey = strings.TrimSpace(payload.APIKey)
+	}
+	if st.Enabled && (st.APIKey == "" || st.BaseURL == "" || st.Model == "") {
+		jsonError(w, http.StatusBadRequest, "API key, base URL, and model are required to enable model lookup")
+		return
+	}
+	if err := s.Store.UpsertVocabSetting(r.Context(), st); err != nil {
+		jsonError(w, http.StatusInternalServerError, "failed to save settings")
+		return
+	}
+	writeJSON(w, http.StatusOK, vocabSettingsJSON(st))
+}
+
+func (s *APIService) handleVocabLookup(w http.ResponseWriter, r *http.Request) {
+	user := s.vocabCurrentUser(r)
+	if user == nil {
+		jsonError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var payload struct {
+		Term string `json:"term"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		jsonError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	term := normalizeTerm(payload.Term)
+	if term == "" {
+		jsonError(w, http.StatusBadRequest, "term is required")
+		return
+	}
+
+	st, err := s.Store.GetVocabSetting(r.Context(), user.ID)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "failed to load settings")
+		return
+	}
+
+	type dictOutcome struct {
+		result *vocablookup.Result
+		err    error
+	}
+	dictCh := make(chan dictOutcome, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+		defer cancel()
+		res, lookupErr := vocablookup.LookupDictionary(ctx, term)
+		dictCh <- dictOutcome{res, lookupErr}
+	}()
+
+	var llmResult *vocablookup.Result
+	var llmErr error
+	useLLM := st != nil && st.Enabled && strings.TrimSpace(st.APIKey) != "" && strings.TrimSpace(st.BaseURL) != "" && strings.TrimSpace(st.Model) != ""
+	if useLLM {
+		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+		defer cancel()
+		llmResult, llmErr = vocablookup.LookupLLM(ctx, vocablookup.LLMConfig{
+			BaseURL: st.BaseURL,
+			APIKey:  st.APIKey,
+			Model:   st.Model,
+			Prompt:  st.Prompt,
+		}, term)
+	}
+	dict := <-dictCh
+
+	if useLLM {
+		if llmErr != nil {
+			jsonError(w, http.StatusBadGateway, llmErr.Error())
+			return
+		}
+		if llmResult != nil {
+			writeJSON(w, http.StatusOK, vocablookup.MergeAudio(llmResult, dict.result))
+			return
+		}
+	}
+
+	if dict.err != nil {
+		jsonError(w, http.StatusBadGateway, dict.err.Error())
+		return
+	}
+	if dict.result == nil {
+		jsonError(w, http.StatusNotFound, "no dictionary entry found")
+		return
+	}
+	writeJSON(w, http.StatusOK, dict.result)
 }

@@ -1,7 +1,7 @@
 import { getRequestToken } from "@/connect";
 
 /** Runtime marker that survives minification. */
-export const VOCAB_MARKER = "mbe-vocab-v1";
+export const VOCAB_MARKER = "mbe-vocab-v2";
 
 export type VocabState = 0 | 1 | 2 | 3;
 
@@ -52,6 +52,24 @@ export interface VocabCardInput {
   example?: string;
   notes?: string;
   tags?: string[];
+}
+
+export interface VocabLookup {
+  phonetic: string;
+  definition: string;
+  example: string;
+  notes: string;
+  audioUrl?: string;
+  source: "llm" | "dictionary";
+}
+
+export interface VocabSettings {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  prompt: string;
+  apiKeyMasked: string;
+  configured: boolean;
 }
 
 export class VocabExistsError extends Error {
@@ -135,31 +153,118 @@ export async function importVocabCsv(text: string): Promise<number> {
     .imported;
 }
 
+export async function lookupVocab(term: string): Promise<VocabLookup> {
+  return call<VocabLookup>("/api/v1/vocab/lookup", { method: "POST", body: JSON.stringify({ term }) });
+}
+
+export async function getVocabSettings(): Promise<VocabSettings> {
+  return call<VocabSettings>("/api/v1/vocab/settings");
+}
+
+export async function saveVocabSettings(input: {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  prompt: string;
+  apiKey?: string;
+  clearApiKey?: boolean;
+}): Promise<VocabSettings> {
+  return call<VocabSettings>("/api/v1/vocab/settings", { method: "PUT", body: JSON.stringify(input) });
+}
+
 export function notifyVocabStatsChanged() {
   window.dispatchEvent(new Event("vocab-stats-changed"));
 }
 
-export interface DictionaryLookup {
-  phonetic: string;
-  definition: string;
-  example: string;
+export type VocabAccent = "us" | "uk";
+
+const ACCENT_KEY = "memos-vocab-accent";
+
+export function getVocabAccent(): VocabAccent {
+  try {
+    return localStorage.getItem(ACCENT_KEY) === "uk" ? "uk" : "us";
+  } catch {
+    return "us";
+  }
 }
 
-export async function lookupDictionary(term: string): Promise<DictionaryLookup | null> {
-  const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term.trim())}`);
-  if (!response.ok) return null;
-  const data = (await response.json()) as Array<{
-    phonetic?: string;
-    phonetics?: Array<{ text?: string }>;
-    meanings?: Array<{ definitions?: Array<{ definition?: string; example?: string }> }>;
-  }>;
-  const entry = data?.[0];
-  if (!entry) return null;
-  const phonetic = entry.phonetic || entry.phonetics?.find((item) => item.text)?.text || "";
-  const definition = entry.meanings?.[0]?.definitions?.[0]?.definition || "";
-  const example = entry.meanings?.flatMap((meaning) => meaning.definitions ?? []).find((item) => item.example)?.example || "";
-  if (!definition && !phonetic) return null;
-  return { phonetic, definition, example };
+export function setVocabAccent(accent: VocabAccent) {
+  try {
+    localStorage.setItem(ACCENT_KEY, accent);
+  } catch {
+    /* ignore */
+  }
+}
+
+function youdaoURL(term: string, type: 1 | 2): string {
+  return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(term.trim())}&type=${type}`;
+}
+
+let currentAudio: HTMLAudioElement | undefined;
+
+function stopPlayback() {
+  if (currentAudio) {
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
+    currentAudio.pause();
+    currentAudio.src = "";
+    currentAudio = undefined;
+  }
+  if (typeof speechSynthesis !== "undefined") {
+    speechSynthesis.cancel();
+  }
+}
+
+function speakTerm(term: string, accent: VocabAccent, done: () => void) {
+  if (typeof speechSynthesis === "undefined") {
+    done();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(term);
+  utterance.lang = accent === "uk" ? "en-GB" : "en-US";
+  const prefix = utterance.lang.toLowerCase();
+  const voice = speechSynthesis.getVoices().find((item) => item.lang.replace("_", "-").toLowerCase().startsWith(prefix));
+  if (voice) utterance.voice = voice;
+  utterance.onend = done;
+  utterance.onerror = () => done();
+  speechSynthesis.speak(utterance);
+}
+
+function playSource(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(src);
+    currentAudio = audio;
+    audio.onended = () => {
+      if (currentAudio === audio) currentAudio = undefined;
+      resolve();
+    };
+    audio.onerror = () => {
+      if (currentAudio === audio) currentAudio = undefined;
+      reject(new Error("audio error"));
+    };
+    void audio.play().catch((error) => {
+      if (currentAudio === audio) currentAudio = undefined;
+      reject(error);
+    });
+  });
+}
+
+export async function playPronunciation(term: string, accent: VocabAccent = getVocabAccent(), audioUrl?: string): Promise<void> {
+  const trimmed = term.trim();
+  if (!trimmed) return;
+  stopPlayback();
+  const primary: 1 | 2 = accent === "uk" ? 2 : 1;
+  const secondary: 1 | 2 = accent === "uk" ? 1 : 2;
+  const sources = [audioUrl, youdaoURL(trimmed, primary), youdaoURL(trimmed, secondary)].filter((item): item is string => Boolean(item));
+  for (const src of sources) {
+    try {
+      await playSource(src);
+      return;
+    } catch {
+      /* try the next source */
+    }
+  }
+  await new Promise<void>((resolve) => speakTerm(trimmed, accent, resolve));
 }
 
 export function formatInterval(dueTs: number, now = Date.now()): string {

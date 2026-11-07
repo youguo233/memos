@@ -97,3 +97,52 @@ func TestVocabCardCRUDAndIsolation(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func TestVocabSettingUpsertAndIsolation(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	defer ts.Close()
+
+	owner, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+	other, err := createTestingUserWithRole(ctx, ts, "other", store.RoleUser)
+	require.NoError(t, err)
+
+	missing, err := ts.GetVocabSetting(ctx, owner.ID)
+	require.NoError(t, err)
+	require.Nil(t, missing)
+
+	require.NoError(t, ts.UpsertVocabSetting(ctx, &store.VocabSetting{
+		CreatorID: owner.ID,
+		Enabled:   true,
+		BaseURL:   "https://api.deepseek.com/v1",
+		APIKey:    "sk-test",
+		Model:     "deepseek-chat",
+		Prompt:    "custom",
+	}))
+	got, err := ts.GetVocabSetting(ctx, owner.ID)
+	require.NoError(t, err)
+	require.True(t, got.Enabled)
+	require.Equal(t, "https://api.deepseek.com/v1", got.BaseURL)
+	require.Equal(t, "sk-test", got.APIKey)
+	require.Equal(t, "deepseek-chat", got.Model)
+	require.Equal(t, "custom", got.Prompt)
+
+	hidden, err := ts.GetVocabSetting(ctx, other.ID)
+	require.NoError(t, err)
+	require.Nil(t, hidden)
+
+	require.NoError(t, ts.UpsertVocabSetting(ctx, &store.VocabSetting{
+		CreatorID: owner.ID,
+		Enabled:   false,
+		BaseURL:   "https://api.openai.com/v1",
+		APIKey:    "sk-new",
+		Model:     "gpt-4o-mini",
+	}))
+	got, err = ts.GetVocabSetting(ctx, owner.ID)
+	require.NoError(t, err)
+	require.False(t, got.Enabled)
+	require.Equal(t, "sk-new", got.APIKey)
+	require.Equal(t, "gpt-4o-mini", got.Model)
+	require.Equal(t, "", got.Prompt)
+}
