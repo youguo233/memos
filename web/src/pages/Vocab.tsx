@@ -749,12 +749,13 @@ const Vocab = () => {
                     onChange={(event) => {
                       setForm((prev) => ({ ...prev, term: event.target.value }));
                       setSuggestOpen(true);
-                      setActiveSuggest(-1);
+                      setActiveSuggest(0);
                     }}
                     onCompositionStart={() => setComposingTerm(true)}
                     onCompositionEnd={() => {
                       setComposingTerm(false);
                       setSuggestOpen(true);
+                      setActiveSuggest(0);
                     }}
                     onBlur={() => setSuggestOpen(false)}
                     onKeyDown={(event) => {
@@ -775,6 +776,12 @@ const Vocab = () => {
                         setActiveSuggest(-1);
                         return;
                       }
+                      if (event.key === "Tab" && !event.shiftKey && suggestions.length > 0) {
+                        event.preventDefault();
+                        const item = suggestions[activeSuggest] ?? suggestions[0];
+                        if (item) applySuggestion(item.term);
+                        return;
+                      }
                       if (event.key !== "Enter") return;
                       event.preventDefault();
                       if (activeSuggest >= 0 && suggestions[activeSuggest]) {
@@ -788,7 +795,7 @@ const Vocab = () => {
                   />
                   {suggestions.length > 0 && (
                     <ul
-                      className="absolute z-30 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-background shadow-lg"
+                      className="absolute z-50 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-mu-line bg-mu-surface text-mu-ink shadow-mu-pop"
                       role="listbox"
                     >
                       {suggestions.map((item, index) => (
@@ -796,15 +803,18 @@ const Vocab = () => {
                           <button
                             type="button"
                             className={cn(
-                              "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
-                              index === activeSuggest && "bg-muted",
+                              "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-mu-ink hover:bg-mu-hover",
+                              index === activeSuggest && "bg-mu-hover",
                             )}
                             onMouseDown={(event) => event.preventDefault()}
                             onMouseEnter={() => setActiveSuggest(index)}
                             onClick={() => applySuggestion(item.term)}
                           >
-                            <span>{item.term}</span>
-                            {item.existing && <span className="text-xs text-muted-foreground">{t("vocab.existingTerm")}</span>}
+                            <span>
+                              <span className="font-medium">{item.term.slice(0, (form.term ?? "").trim().length)}</span>
+                              {item.term.slice((form.term ?? "").trim().length)}
+                            </span>
+                            {item.existing && <span className="text-xs text-mu-ink-muted">{t("vocab.existingTerm")}</span>}
                           </button>
                         </li>
                       ))}

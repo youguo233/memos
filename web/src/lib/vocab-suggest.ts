@@ -1,16 +1,20 @@
 import wordListText from "./english-words.txt?raw";
 
+// Frequency-ordered English words for local prefix suggestions (no extra server calls).
+// Source: hermitdave/FrequencyWords content/2018/en/en_50k.txt (OpenSubtitles-based).
 const ENGLISH_WORDS = wordListText
   .split(/\r?\n/)
-  .map((word) => word.trim())
-  .filter(Boolean);
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"))
+  .map((line) => line.split(/\s+/)[0]?.toLowerCase() ?? "")
+  .filter((word) => /^[a-z]+(?:[-'][a-z]+)*$/.test(word));
 
 export type VocabSuggestion = {
   term: string;
   existing?: boolean;
 };
 
-export function suggestVocabTerms(query: string, knownTerms: string[], limit = 8): VocabSuggestion[] {
+export function suggestVocabTerms(query: string, knownTerms: string[], limit = 10): VocabSuggestion[] {
   const needle = query.trim().toLowerCase();
   if (needle.length < 2) return [];
 
