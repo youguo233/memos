@@ -14,24 +14,24 @@ import (
 	"time"
 )
 
-const DefaultPrompt = `You help a Chinese graduate student quickly understand and remember an English word or phrase from academic papers.
+const DefaultPrompt = `You help a Chinese learner quickly understand and remember an English word or phrase for everyday study: reading, listening, and conversation. Do not assume the word comes from an academic paper.
 
 Reply with JSON only, no markdown fences, using these keys:
 - phonetic: American IPA, like /ɪˈnɔːɡjəreɪt/
-- definition: senses ranked by how often the learner will meet them when reading papers, at most 4. Format exactly:
+- definition: senses ranked by how useful they are in ordinary use, at most 4. Format exactly:
 【常用】[pos] short English gloss
 Chinese gloss
 【也作】[pos] short English gloss
 Chinese gloss
-Use 【常用】 for the 1-2 senses they should learn first. Use 【也作】 for other useful senses. Each English gloss is one short clause.
-- example: two sentences for the most common sense(s), academic when it fits. Format exactly:
+Use 【常用】 for the 1-2 senses they should learn first. Use 【也作】 for other useful senses. Each English gloss is one short clause. Do not add extra labels such as 高频, 低频, 非常常见, or 学术论文.
+- example: two sentences for the most common sense(s). Use natural English that clearly shows the meaning; only use a specialized or academic sentence if that is how the word is typically used. Format exactly:
 EN: English sentence.
 中: Natural Chinese translation.
 EN: English sentence.
 中: Natural Chinese translation.
 - notes: Chinese only, easy to scan, to help them master the word quickly. Use these headers and "· " bullets; omit an empty section:
 【用法】
-· when and why writers choose this word
+· how the word is typically used (situation, tone, or grammar), without commenting on how common it is
 【搭配】
 · key collocations, keep the English phrase and add a brief Chinese note
 【易混】
@@ -39,7 +39,7 @@ EN: English sentence.
 【记忆】
 · one short memory hook
 
-Be accurate and concise. Do not invent unrelated meanings.`
+Be accurate and concise. Do not invent unrelated meanings. Do not mention academic papers unless the word itself is mainly scholarly.`
 
 // LLMTimeout is how long a model lookup may take, including slower compatible APIs.
 const LLMTimeout = 90 * time.Second

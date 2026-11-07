@@ -1486,7 +1486,7 @@
     "llmApiKeyHint": "Leave blank to keep the saved key",
     "llmApiKeySaved": "A key is saved ({{masked}})",
     "llmPrompt": "Custom prompt (optional)",
-    "llmPromptHint": "Leave blank to use the default: highlight the most common senses, bilingual examples, and scannable usage notes.",
+    "llmPromptHint": "Leave blank to use the default: highlight the most useful everyday senses, bilingual examples, and scannable usage notes. It is meant for general study, not only academic papers.",
     "llmHelp": "Use any OpenAI-compatible API. Requests are sent from this Memos server, so the URL must be reachable from the server, not only from your phone. Examples: DeepSeek https://api.deepseek.com/v1 (model deepseek-chat), Qwen compatible mode https://dashscope.aliyuncs.com/compatible-mode/v1, SiliconFlow https://api.siliconflow.cn/v1, OpenAI https://api.openai.com/v1.",
     "llmSave": "Save settings",
     "llmSaved": "Vocabulary settings saved",

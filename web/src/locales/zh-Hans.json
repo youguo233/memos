@@ -1486,7 +1486,7 @@
     "llmApiKeyHint": "留空表示不改已保存的密钥",
     "llmApiKeySaved": "已保存密钥（{{masked}}）",
     "llmPrompt": "自定义提示词（可选）",
-    "llmPromptHint": "留空则使用默认提示词：突出常用义、中英对照例句，以及方便快速掌握的用法笔记。",
+    "llmPromptHint": "留空则使用默认提示词：按日常使用列出常用义、中英对照例句，以及方便快速掌握的用法笔记，不会特意往学术论文上靠。",
     "llmHelp": "填写兼容 OpenAI 的接口。请求由这台 Memos 服务器发出，所以地址必须是服务器能访问到的，而不是只在你手机上能打开。例如 DeepSeek https://api.deepseek.com/v1（模型 deepseek-chat），通义兼容模式 https://dashscope.aliyuncs.com/compatible-mode/v1，SiliconFlow https://api.siliconflow.cn/v1，OpenAI https://api.openai.com/v1。",
     "llmSave": "保存设置",
     "llmSaved": "生词本设置已保存",
