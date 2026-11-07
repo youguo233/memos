@@ -1,6 +1,6 @@
 import { Button, Input, Tabs, Textarea } from "@usememos/ui";
 import { BookAIcon, DownloadIcon, PencilIcon, Trash2Icon, UploadIcon, Volume2Icon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isTypingTarget } from "@/lib/hotkeys";
 import { getUserTimezone } from "@/lib/timezone";
@@ -32,6 +32,7 @@ import {
   VocabSettings,
   VocabStats,
 } from "@/lib/vocab";
+import { suggestVocabTerms } from "@/lib/vocab-suggest";
 import { ROUTES } from "@/router/routes";
 import { useTranslate } from "@/utils/i18n";
 
@@ -153,6 +154,8 @@ function VocabFormattedText({ text, variant }: { text: string; variant?: "defini
 
 const Vocab = () => {
   const t = useTranslate();
+  const tRef = useRef(t);
+  tRef.current = t;
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("review");
   const [stats, setStats] = useState<VocabStats>({ total: 0, new: 0, learning: 0, review: 0, due: 0 });
@@ -174,32 +177,43 @@ const Vocab = () => {
   const [settingsForm, setSettingsForm] = useState(emptySettingsForm);
   const [savingSettings, setSavingSettings] = useState(false);
   const [lookupAudioUrl, setLookupAudioUrl] = useState("");
+  const [composingTerm, setComposingTerm] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [activeSuggest, setActiveSuggest] = useState(-1);
 
   const changeAccent = (next: VocabAccent) => {
     setVocabAccent(next);
     setAccentState(next);
   };
 
-  const refreshStats = useCallback(async () => {
+  const refreshStats = useCallback(async (fresh = false) => {
     try {
-      const next = await getVocabStats();
+      const next = await getVocabStats(fresh ? { fresh: true } : undefined);
       setStats(next);
-      notifyVocabStatsChanged();
+      notifyVocabStatsChanged(next);
     } catch {
       /* keep previous */
     }
   }, []);
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (options?: { preserveCurrent?: boolean }) => {
     try {
       const next = await getVocabSession();
-      setSession(next);
-      setIndex(0);
-      setRevealed(false);
+      setSession((prev) => {
+        if (!options?.preserveCurrent || prev.length === 0) return next;
+        const have = new Set(prev.map((card) => card.uid));
+        const extra = next.filter((card) => !have.has(card.uid));
+        return extra.length > 0 ? [...prev, ...extra] : prev;
+      });
+      if (!options?.preserveCurrent) {
+        setIndex(0);
+        setRevealed(false);
+      }
     } catch (error) {
-      showErrorToast(error instanceof Error ? error.message : t("vocab.loadFailed"));
+      if (options?.preserveCurrent) return;
+      showErrorToast(error instanceof Error ? error.message : tRef.current("vocab.loadFailed"));
     }
-  }, [t]);
+  }, []);
 
   const refreshLibrary = useCallback(async () => {
     setLoadingLibrary(true);
@@ -239,6 +253,28 @@ const Vocab = () => {
     if (tab === "settings") void refreshSettings();
   }, [refreshLibrary, refreshSession, refreshSettings, tab]);
 
+  useEffect(() => {
+    if (tab !== "review") return;
+    const pollMs = 15_000;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      await refreshStats(true);
+      if (cancelled) return;
+      await refreshSession({ preserveCurrent: true });
+    };
+    const timer = window.setInterval(() => void tick(), pollMs);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshSession, refreshStats, tab]);
+
   const current = session[index];
 
   const handleReview = useCallback(
@@ -247,16 +283,18 @@ const Vocab = () => {
       setReviewing(true);
       try {
         await reviewVocabCard(current.uid, rating);
-        setSession((prev) => prev.filter((_, i) => i !== index));
+        const remaining = session.filter((_, i) => i !== index);
+        setSession(remaining);
         setRevealed(false);
-        await refreshStats();
+        await refreshStats(true);
+        if (remaining.length === 0) await refreshSession();
       } catch (error) {
         showErrorToast(error instanceof Error ? error.message : t("vocab.reviewFailed"));
       } finally {
         setReviewing(false);
       }
     },
-    [current, index, refreshStats, reviewing, t],
+    [current, index, refreshSession, refreshStats, reviewing, session, t],
   );
 
   useEffect(() => {
@@ -330,7 +368,7 @@ const Vocab = () => {
       setForm(emptyForm());
       setEditingUid(undefined);
       setLookupAudioUrl("");
-      await refreshStats();
+      await refreshStats(true);
       setTab("library");
     } catch (error) {
       if (error instanceof VocabExistsError) {
@@ -362,20 +400,41 @@ const Vocab = () => {
     try {
       await deleteVocabCard(card.uid);
       setCards((prev) => prev.filter((item) => item.uid !== card.uid));
-      await refreshStats();
+      await refreshStats(true);
     } catch (error) {
       showErrorToast(error instanceof Error ? error.message : t("vocab.deleteFailed"));
     }
   };
 
-  const lookup = async () => {
-    if (!form.term.trim()) return;
+  const knownTerms = useMemo(() => {
+    const terms = new Set<string>();
+    for (const card of cards) terms.add(card.term);
+    for (const card of session) terms.add(card.term);
+    return [...terms];
+  }, [cards, session]);
+
+  const suggestions = useMemo(() => {
+    if (tab !== "add" || composingTerm || !suggestOpen) return [];
+    return suggestVocabTerms(form.term ?? "", knownTerms);
+  }, [composingTerm, form.term, knownTerms, suggestOpen, tab]);
+
+  const applySuggestion = (term: string) => {
+    setForm((prev) => ({ ...prev, term }));
+    setSuggestOpen(false);
+    setActiveSuggest(-1);
+  };
+
+  const lookup = async (termOverride?: string) => {
+    const term = (termOverride ?? form.term).trim();
+    if (!term) return;
     setLookingUp(true);
+    setSuggestOpen(false);
     try {
-      const result = await lookupVocab(form.term);
+      const result = await lookupVocab(term);
       setLookupAudioUrl(result.audioUrl ?? "");
       setForm((prev) => ({
         ...prev,
+        term,
         phonetic: prev.phonetic || result.phonetic,
         definition: prev.definition || result.definition,
         example: prev.example || result.example,
@@ -440,7 +499,7 @@ const Vocab = () => {
     try {
       const imported = await importVocabCsv(await file.text());
       toast.add({ title: t("vocab.imported", { count: imported }), type: "success" });
-      await refreshStats();
+      await refreshStats(true);
       await refreshLibrary();
     } catch (error) {
       showErrorToast(error instanceof Error ? error.message : t("vocab.importFailed"));
@@ -469,13 +528,12 @@ const Vocab = () => {
         className="shrink-0"
         disabled={busy}
         aria-label={t("vocab.playAudio")}
+        icon={<Volume2Icon />}
         onClick={() => {
           setBusy(true);
           void playPronunciation(term, accent, audioUrl).finally(() => setBusy(false));
         }}
-      >
-        <Volume2Icon className="size-4" />
-      </Button>
+      />
     );
   };
 
@@ -554,13 +612,15 @@ const Vocab = () => {
                       {ratingButtons.map((item) => (
                         <Button
                           key={item.rating}
-                          className={cn("h-12 flex-col gap-0.5", item.className)}
+                          className={cn("h-12", item.className)}
                           disabled={reviewing}
                           onClick={() => void handleReview(item.rating)}
                         >
-                          <span>{item.label}</span>
-                          <span className="text-[11px] opacity-80">
-                            {formatInterval(current.previews?.[String(item.rating)]?.dueTs ?? current.dueTs)}
+                          <span className="flex flex-col gap-0.5 leading-tight">
+                            <span>{item.label}</span>
+                            <span className="text-[11px] opacity-80">
+                              {formatInterval(current.previews?.[String(item.rating)]?.dueTs ?? current.dueTs)}
+                            </span>
                           </span>
                         </Button>
                       ))}
@@ -580,8 +640,7 @@ const Vocab = () => {
                   <Button variant="neutral" onClick={() => void refreshLibrary()}>
                     {t("vocab.search")}
                   </Button>
-                  <Button variant="neutral" onClick={() => void exportCsv()}>
-                    <DownloadIcon className="size-4" />
+                  <Button variant="neutral" onClick={() => void exportCsv()} icon={<DownloadIcon />}>
                     {t("vocab.exportCsv")}
                   </Button>
                   <label className="inline-flex">
@@ -595,8 +654,8 @@ const Vocab = () => {
                       variant="neutral"
                       type="button"
                       onClick={(event) => (event.currentTarget.previousElementSibling as HTMLInputElement | null)?.click()}
+                      icon={<UploadIcon />}
                     >
-                      <UploadIcon className="size-4" />
                       {t("vocab.importCsv")}
                     </Button>
                   </label>
@@ -654,12 +713,20 @@ const Vocab = () => {
                         </div>
                       </div>
                       <div className="flex shrink-0">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(card)} aria-label={t("vocab.edit")}>
-                          <PencilIcon className="size-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => void removeCard(card)} aria-label={t("vocab.delete")}>
-                          <Trash2Icon className="size-4" />
-                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEdit(card)}
+                          aria-label={t("vocab.edit")}
+                          icon={<PencilIcon />}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void removeCard(card)}
+                          aria-label={t("vocab.delete")}
+                          icon={<Trash2Icon />}
+                        />
                       </div>
                     </div>
                   ))}
@@ -672,16 +739,76 @@ const Vocab = () => {
             <div className="w-full p-4 sm:p-6 flex flex-col gap-3">
               <label className="text-sm font-medium">{t("vocab.term")}</label>
               <div className="flex gap-2">
-                <Input
-                  value={form.term}
-                  onChange={(event) => setForm((prev) => ({ ...prev, term: event.target.value }))}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-                    event.preventDefault();
-                    if (!lookingUp) void lookup();
-                  }}
-                />
+                <div className="relative min-w-0 flex-1">
+                  <Input
+                    value={form.term}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => {
+                      setForm((prev) => ({ ...prev, term: event.target.value }));
+                      setSuggestOpen(true);
+                      setActiveSuggest(-1);
+                    }}
+                    onCompositionStart={() => setComposingTerm(true)}
+                    onCompositionEnd={() => {
+                      setComposingTerm(false);
+                      setSuggestOpen(true);
+                    }}
+                    onBlur={() => setSuggestOpen(false)}
+                    onKeyDown={(event) => {
+                      if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                      if (suggestions.length > 0 && event.key === "ArrowDown") {
+                        event.preventDefault();
+                        setActiveSuggest((index) => (index + 1) % suggestions.length);
+                        return;
+                      }
+                      if (suggestions.length > 0 && event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setActiveSuggest((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+                        return;
+                      }
+                      if (event.key === "Escape" && suggestions.length > 0) {
+                        event.preventDefault();
+                        setSuggestOpen(false);
+                        setActiveSuggest(-1);
+                        return;
+                      }
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      if (activeSuggest >= 0 && suggestions[activeSuggest]) {
+                        const term = suggestions[activeSuggest].term;
+                        applySuggestion(term);
+                        if (!lookingUp) void lookup(term);
+                        return;
+                      }
+                      if (!lookingUp) void lookup();
+                    }}
+                  />
+                  {suggestions.length > 0 && (
+                    <ul
+                      className="absolute z-30 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-background shadow-lg"
+                      role="listbox"
+                    >
+                      {suggestions.map((item, index) => (
+                        <li key={item.term} role="option" aria-selected={index === activeSuggest}>
+                          <button
+                            type="button"
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
+                              index === activeSuggest && "bg-muted",
+                            )}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onMouseEnter={() => setActiveSuggest(index)}
+                            onClick={() => applySuggestion(item.term)}
+                          >
+                            <span>{item.term}</span>
+                            {item.existing && <span className="text-xs text-muted-foreground">{t("vocab.existingTerm")}</span>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <PronounceButton term={form.term ?? ""} audioUrl={lookupAudioUrl} />
                 <Button variant="neutral" disabled={lookingUp} onClick={() => void lookup()}>
                   {lookingUp

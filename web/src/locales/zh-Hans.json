@@ -1459,6 +1459,7 @@
     "library": "词库",
     "add": "添加",
     "term": "单词或短语",
+    "existingTerm": "已在生词本",
     "phonetic": "音标",
     "definition": "释义",
     "example": "例句",

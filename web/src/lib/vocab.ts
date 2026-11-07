@@ -1,7 +1,7 @@
 import { getRequestToken } from "@/connect";
 
 /** Runtime marker that survives minification. */
-export const VOCAB_MARKER = "mbe-vocab-v4";
+export const VOCAB_MARKER = "mbe-vocab-v5";
 
 export type VocabState = 0 | 1 | 2 | 3;
 
@@ -99,8 +99,29 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-export async function getVocabStats(): Promise<VocabStats> {
-  return call<VocabStats>("/api/v1/vocab/stats");
+const STATS_CACHE_MS = 1500;
+
+let statsInflight: Promise<VocabStats> | undefined;
+let statsCache: { value: VocabStats; at: number } | undefined;
+let sessionInflight: Promise<VocabCard[]> | undefined;
+
+export async function getVocabStats(options?: { fresh?: boolean }): Promise<VocabStats> {
+  if (options?.fresh) {
+    statsCache = undefined;
+  } else if (statsCache && Date.now() - statsCache.at < STATS_CACHE_MS) {
+    return statsCache.value;
+  }
+  if (!statsInflight) {
+    statsInflight = call<VocabStats>("/api/v1/vocab/stats")
+      .then((value) => {
+        statsCache = { value, at: Date.now() };
+        return value;
+      })
+      .finally(() => {
+        statsInflight = undefined;
+      });
+  }
+  return statsInflight;
 }
 
 export async function listVocabCards(params: {
@@ -121,7 +142,14 @@ export async function listVocabCards(params: {
 }
 
 export async function getVocabSession(): Promise<VocabCard[]> {
-  return (await call<{ cards: VocabCard[] }>("/api/v1/vocab/session")).cards ?? [];
+  if (!sessionInflight) {
+    sessionInflight = call<{ cards: VocabCard[] }>("/api/v1/vocab/session")
+      .then((data) => data.cards ?? [])
+      .finally(() => {
+        sessionInflight = undefined;
+      });
+  }
+  return sessionInflight;
 }
 
 export async function getVocabCard(uid: string): Promise<VocabCard> {
@@ -172,8 +200,13 @@ export async function saveVocabSettings(input: {
   return call<VocabSettings>("/api/v1/vocab/settings", { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function notifyVocabStatsChanged() {
-  window.dispatchEvent(new Event("vocab-stats-changed"));
+export function notifyVocabStatsChanged(stats?: VocabStats) {
+  if (stats) {
+    statsCache = { value: stats, at: Date.now() };
+  } else {
+    statsCache = undefined;
+  }
+  window.dispatchEvent(new CustomEvent<VocabStats | undefined>("vocab-stats-changed", { detail: stats }));
 }
 
 export type VocabAccent = "us" | "uk";

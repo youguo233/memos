@@ -1459,6 +1459,7 @@
     "library": "Library",
     "add": "Add",
     "term": "Term or phrase",
+    "existingTerm": "Already in notebook",
     "phonetic": "Pronunciation",
     "definition": "Definition",
     "example": "Example",

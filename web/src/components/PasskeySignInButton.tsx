@@ -29,8 +29,7 @@ function PasskeySignInButton({ redirectPath }: { redirectPath?: string }) {
   };
 
   return (
-    <Button type="button" variant="neutral" className="w-full" disabled={loading} onClick={handleClick}>
-      <FingerprintIcon className="mr-1.5 size-4" />
+    <Button type="button" variant="neutral" className="w-full" disabled={loading} onClick={handleClick} icon={<FingerprintIcon />}>
       {t("auth.sign-in-with-passkey")}
     </Button>
   );

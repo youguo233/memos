@@ -254,7 +254,12 @@ const VocabSidebarContent = () => {
   const t = useTranslate();
   const [stats, setStats] = useState({ total: 0, new: 0, learning: 0, review: 0, due: 0 });
   useEffect(() => {
-    const load = () => {
+    const load = (event?: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : undefined;
+      if (detail && typeof detail.due === "number") {
+        setStats(detail);
+        return;
+      }
       getVocabStats()
         .then(setStats)
         .catch(() => undefined);
@@ -387,7 +392,12 @@ const GlobalNavigation = () => {
   const [vocabBadge, setVocabBadge] = useState(0);
   useEffect(() => {
     if (!currentUser) return;
-    const load = () => {
+    const load = (event?: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : undefined;
+      if (detail && typeof detail.due === "number") {
+        setVocabBadge(detail.due);
+        return;
+      }
       getVocabStats()
         .then((stats) => setVocabBadge(stats.due))
         .catch(() => undefined);

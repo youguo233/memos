@@ -62,14 +62,11 @@ const PasskeySection = () => {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" aria-label={t("common.delete")} onClick={() => handleDelete(passkey)}>
-              <Trash2Icon className="size-4" />
-            </Button>
+            <Button variant="ghost" size="sm" aria-label={t("common.delete")} onClick={() => handleDelete(passkey)} icon={<Trash2Icon />} />
           </div>
         ))}
         <div>
-          <Button size="sm" variant="neutral" disabled={busy || !passkeySupported()} onClick={handleAdd}>
-            <FingerprintIcon className="mr-1.5 size-4" />
+          <Button size="sm" variant="neutral" disabled={busy || !passkeySupported()} onClick={handleAdd} icon={<FingerprintIcon />}>
             {t("setting.passkey.add")}
           </Button>
         </div>
