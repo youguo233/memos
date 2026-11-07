@@ -1,4 +1,4 @@
-import { Button, Input, Tabs, Textarea } from "@usememos/ui";
+import { Badge, Button, Input, Tabs, Textarea } from "@usememos/ui";
 import { BookAIcon, DownloadIcon, PencilIcon, Trash2Icon, UploadIcon, Volume2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -85,9 +85,9 @@ function VocabFormattedText({ text, variant }: { text: string; variant?: "defini
           prev = "common";
           return (
             <div key={index} className="flex items-start gap-2 mt-1 first:mt-0">
-              <span className="shrink-0 mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">
+              <Badge tone="warning" className="shrink-0 mt-0.5">
                 常用
-              </span>
+              </Badge>
               <span className="font-medium leading-7">{common[1].trim()}</span>
             </div>
           );
@@ -97,8 +97,10 @@ function VocabFormattedText({ text, variant }: { text: string; variant?: "defini
           prev = "other";
           return (
             <div key={index} className="flex items-start gap-2 mt-2">
-              <span className="shrink-0 mt-0.5 text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">也作</span>
-              <span className="text-muted-foreground leading-7">{other[1].trim()}</span>
+              <Badge tone="outline" className="shrink-0 mt-0.5">
+                也作
+              </Badge>
+              <span className="text-mu-ink-muted leading-7">{other[1].trim()}</span>
             </div>
           );
         }
@@ -594,9 +596,9 @@ const Vocab = () => {
                         {current.tags?.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {current.tags.map((tag) => (
-                              <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              <Badge key={tag} tone="outline">
                                 {tag}
-                              </span>
+                              </Badge>
                             ))}
                           </div>
                         )}
