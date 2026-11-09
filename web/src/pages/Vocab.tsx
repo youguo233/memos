@@ -160,6 +160,8 @@ const Vocab = () => {
   tRef.current = t;
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("review");
+  const termInputRef = useRef<HTMLInputElement>(null);
+  const focusTermOnAddRef = useRef(false);
   const [stats, setStats] = useState<VocabStats>({ total: 0, new: 0, learning: 0, review: 0, due: 0 });
   const [session, setSession] = useState<VocabCard[]>([]);
   const [index, setIndex] = useState(0);
@@ -336,6 +338,7 @@ const Vocab = () => {
       }
       if (key === "a") {
         event.preventDefault();
+        focusTermOnAddRef.current = true;
         setTab("add");
         return;
       }
@@ -407,6 +410,13 @@ const Vocab = () => {
       showErrorToast(error instanceof Error ? error.message : t("vocab.deleteFailed"));
     }
   };
+
+  useEffect(() => {
+    if (tab !== "add" || !focusTermOnAddRef.current) return;
+    focusTermOnAddRef.current = false;
+    const frame = window.requestAnimationFrame(() => termInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [tab]);
 
   const knownTerms = useMemo(() => {
     const terms = new Set<string>();
@@ -743,6 +753,7 @@ const Vocab = () => {
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                   <Input
+                    ref={termInputRef}
                     value={form.term}
                     autoComplete="off"
                     spellCheck={false}

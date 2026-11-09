@@ -1,7 +1,7 @@
 import { getRequestToken } from "@/connect";
 
 /** Runtime marker that survives minification. */
-export const VOCAB_MARKER = "mbe-vocab-v9";
+export const VOCAB_MARKER = "mbe-vocab-v10";
 
 export type VocabState = 0 | 1 | 2 | 3;
 
